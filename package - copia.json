@@ -1,0 +1,14 @@
+{
+  "name": "mundo-vivo-37-multiplayer",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Mundo Vivo 3.7 multijugador con guardado persistente",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}

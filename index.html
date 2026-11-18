@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Mundo Vivo 3.7 — Edificios 2D y NPC mejorados</title>
+<style>
+  *{box-sizing:border-box} html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;font-family:system-ui,Segoe UI,Arial;color:#fff}
+  canvas{display:block;width:100vw;height:100vh;touch-action:none}
+  #hud{position:fixed;left:14px;top:14px;padding:10px 13px;background:#08131dcc;border:1px solid #ffffff24;border-radius:14px;backdrop-filter:blur(8px);font-size:13px;line-height:1.45;pointer-events:none}
+  #hud b{font-size:15px;color:#b9f6ca}
+  #hint{position:fixed;right:14px;top:14px;padding:9px 12px;background:#08131dcc;border:1px solid #ffffff24;border-radius:12px;font-size:12px;pointer-events:none}
+  #touch{position:fixed;inset:auto 0 18px 0;display:none;justify-content:space-between;align-items:end;padding:0 18px;pointer-events:none}
+  .pad{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px);gap:5px;pointer-events:auto}
+  .pad button,.actions button{border:1px solid #ffffff55;background:#0b1729bb;color:white;border-radius:14px;font-size:20px;backdrop-filter:blur(8px);touch-action:none}
+  .pad button:active,.actions button:active{background:#3b8267}
+  .pad .up{grid-column:2}.pad .left{grid-column:1;grid-row:2}.pad .down{grid-column:2;grid-row:2}.pad .right{grid-column:3;grid-row:2}
+  .actions{display:flex;gap:8px;pointer-events:auto}.actions button{width:62px;height:62px;font-size:12px;font-weight:700}
+  #start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(#071321aa,#071321dd);padding:22px}
+  .panel{max-width:440px;text-align:center;background:#101f2feF;border:1px solid #ffffff2b;border-radius:22px;padding:25px;box-shadow:0 20px 80px #0009}
+  .panel h1{margin:0 0 8px;font-size:clamp(26px,6vw,40px)}.panel p{color:#c7d6df;line-height:1.5}
+  .panel button{border:0;border-radius:13px;padding:13px 22px;background:#8ee6a5;color:#10221a;font-weight:900;font-size:16px}
+  @media(max-width:760px),(pointer:coarse){#touch{display:flex}#hint{display:none}}
+#networkBar{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:3;display:none;padding:8px 12px;border:1px solid #ffffff35;border-radius:12px;background:#08131ddd;font-size:12px;white-space:nowrap}
+  #networkBar button{margin-left:7px;border:0;border-radius:7px;padding:5px 8px;background:#8ee6a5;font-weight:800}
+  #start input{width:100%;margin:5px 0;padding:10px;border-radius:9px;border:1px solid #ffffff45;background:#091827;color:white;font-size:14px}
+</style>
+<script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud"><b>🌿 MUNDO VIVO 3.6</b><br><span id="status">Explora libremente</span><br>WASD / flechas · Shift correr · Espacio saltar</div>
+<div id="hint">WASD / Flechas: moverte<br>Shift: correr · Espacio: saltar<br>F: disparar · E: recoger · Q: rapidez · B: escudo · K: +500 monedas · G: chat</div>
+<div id="combatHud" style="position:fixed;left:14px;bottom:14px;padding:9px 12px;background:#08131ddd;border:1px solid #ffffff30;border-radius:12px;font-size:12px;line-height:1.5;pointer-events:none">
+❤️ <span id="hp">100</span> · 🔫 <span id="weapon">Sin arma</span><br>
+🎒 <span id="ammo">0</span> balas · 🪙 <span id="lootCoins">22</span>
+</div>
+<div id="combatButtons" style="position:fixed;right:16px;bottom:18px;display:flex;gap:8px;z-index:2">
+<button id="fireBtn" style="border:1px solid #ffffff66;border-radius:14px;padding:14px;background:#9e3f36;color:white;font-weight:900">DISPARAR</button>
+<button id="pickBtn" style="border:1px solid #ffffff66;border-radius:14px;padding:14px;background:#287a55;color:white;font-weight:900">COGER</button>
+</div>
+<div id="progressUI" style="position:fixed;right:14px;top:72px;width:min(260px,45vw);padding:11px 13px;background:#08131dcc;border:1px solid #ffffff24;border-radius:14px;backdrop-filter:blur(8px);font-size:12px">
+  <div style="display:flex;justify-content:space-between;gap:8px"><b>📜 MISIÓN ACTUAL</b><span id="missionCount">1 / 10000</span></div>
+  <div id="missionName" style="margin:7px 0 5px;font-weight:700">Explora el mundo</div>
+  <div style="height:7px;background:#ffffff25;border-radius:9px;overflow:hidden"><div id="missionBar" style="height:100%;width:0;background:#8ee6a5;border-radius:9px"></div></div>
+  <div id="missionProgress" style="margin-top:5px;color:#c7d6df">0 / 100</div>
+  <div style="display:flex;justify-content:space-between;margin-top:7px;color:#b9f6ca"><span id="coins">🪙 22 monedas</span><span style="display:flex;gap:5px"><button id="openChat" style="background:#6ca8df;color:#071522;border:0;border-radius:8px;padding:5px 8px;font-weight:800">CHAT</button><button id="openSkins" style="background:#8ee6a5;color:#10221a;border:0;border-radius:8px;padding:5px 8px;font-weight:800">SKINS</button></span></div>
+</div>
+<div id="skinPanel" style="display:none;position:fixed;inset:0;background:#06111bdc;z-index:5;align-items:center;justify-content:center;padding:18px">
+ <div style="width:min(420px,100%);max-height:85vh;overflow:auto;background:#132538;border:1px solid #ffffff35;border-radius:20px;padding:20px">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">✨ Armario de skins</h2><button id="closeSkins" style="border:0;border-radius:9px;padding:7px 10px">✕</button></div>
+  <p style="color:#c7d6df;font-size:13px">Completa misiones para ganar monedas y desbloquear apariencias.</p>
+  <div id="skinList" style="display:grid;grid-template-columns:1fr 1fr;gap:9px"></div>
+ </div>
+</div>
+<div id="socialPanel" style="position:fixed;left:14px;bottom:112px;width:min(330px,calc(100vw - 28px));z-index:4;background:#071522eF;border:1px solid #ffffff40;border-radius:14px;padding:10px;display:none;backdrop-filter:blur(8px)">
+ <b>💬 Chat del mundo</b><div id="chatLog" style="height:105px;overflow:auto;font-size:12px;color:#dcebf2;margin:7px 0"></div>
+ <div style="display:flex;gap:5px"><input id="chatInput" maxlength="100" placeholder="Escribe un mensaje..." style="min-width:0;flex:1;padding:9px;border-radius:8px;border:1px solid #ffffff40;background:#10283a;color:white"><button id="sendChat" style="border:0;border-radius:8px;padding:8px;background:#8ee6a5;font-weight:bold">Enviar</button></div>
+ <div style="display:flex;gap:6px;margin-top:7px"><button id="voiceBtn" style="border:0;border-radius:8px;padding:7px;background:#355d8a;color:white">🎙️ Hablar</button><small id="voiceStatus" style="align-self:center;color:#b9f6ca">Voz del navegador (si está disponible)</small></div>
+</div>
+<div id="powerToast" style="display:none;position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:6;background:#10283a;border:1px solid #ffe36b;padding:12px 18px;border-radius:12px;font-weight:800;text-align:center"></div>
+<div id="touch">
+  <div class="pad">
+    <button class="up" data-key="ArrowUp">▲</button><button class="left" data-key="ArrowLeft">◀</button>
+    <button class="down" data-key="ArrowDown">▼</button><button class="right" data-key="ArrowRight">▶</button>
+  </div>
+  <div class="actions"><button data-key="Shift">CORRER</button><button data-key=" ">SALTAR</button><button id="mobileFire" style="background:#9e3f36">FUEGO</button><button id="mobilePick" style="background:#287a55">COGER</button></div>
+</div>
+<div id="networkBar">🌐 Sala: <b id="roomLabel">---</b> · 👥 <b id="onlineCount">1</b><button id="copyRoom">COPIAR CÓDIGO</button></div>
+<div id="start"><div class="panel"><h1>🌎 Mundo Vivo</h1><p>Ya estás dentro del mundo. Camina, corre y salta por un ciudad 2D con avenidas, edificios separados, árboles y NPC que buscan caminos libres.</p><p><b>🎁 Regalo de bienvenida: 22 monedas gratis.</b> Úsalas para desbloquear una skin en el armario.</p><p><b>Controles:</b> WASD o flechas, Shift correr, Espacio saltar, F disparar y E recoger. En móvil usa los botones.</p><p>🧑‍🤝‍🧑 1.000 NPC · 🗺️ mundo infinito · 🔫 armas · ❤️ combate arcade.</p><input id="playerName" maxlength="18" placeholder="Tu nombre" value="Jugador"><input id="roomCode" maxlength="10" placeholder="Código de sala (vacío = crear sala)"><small style="display:block;color:#b9c8d4;margin:4px 0 12px">Comparte el código con tu amigo para que entre a tu mundo.</small><button id="play">CREAR / ENTRAR A LA SALA</button></div></div>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+let W=0,H=0,dpr=1,last=0,worldTime=0;
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+const keys=new Set();
+addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();keys.add(e.key===' ' ? ' ' : e.key.toLowerCase())});
+addEventListener('keyup',e=>keys.delete(e.key===' ' ? ' ' : e.key.toLowerCase()));
+document.querySelectorAll('[data-key]').forEach(b=>{
+ const k=b.dataset.key===' ' ? ' ' : b.dataset.key.toLowerCase();
+ b.addEventListener('pointerdown',e=>{e.preventDefault();keys.add(k);b.setPointerCapture(e.pointerId)});
+ const off=()=>keys.delete(k);b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('lostpointercapture',off);
+});
+// Identificador único del perfil: permite recuperar la partida en este navegador.
+let profileId=localStorage.getItem('mundoVivoProfileId');
+if(!profileId){profileId=(crypto.randomUUID?crypto.randomUUID():('mv-'+Date.now()+'-'+Math.random().toString(36).slice(2)));localStorage.setItem('mundoVivoProfileId',profileId);}
+let saveLoaded=false,saveTimer=null;
+let started=false,jumpWasDown=false;document.getElementById('play').onclick=()=>{started=true;document.getElementById('start').style.display='none';document.getElementById('status').textContent='Conectando con el servidor...';joinOnlineRoom();};
+const player={x:0,y:0,z:0,vz:0,dir:0,walk:0,skin:0};
+const remotePlayers=new Map();let netSocket=null,netRoom='',netEmitWait=0;
+function joinOnlineRoom(){
+ if(typeof io!=='function'){document.getElementById('status').textContent='No se pudo cargar el sistema online.';return;}
+ netSocket=io();const name=document.getElementById('playerName').value.trim()||'Jugador';
+ let room=document.getElementById('roomCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10);
+ if(!room)room=Math.random().toString(36).slice(2,8).toUpperCase();netRoom=room;
+ netSocket.on('connect',()=>netSocket.emit('join-room',{room:netRoom,name}));
+ netSocket.on('room-joined',data=>{netRoom=data.room;remotePlayers.clear();(data.players||[]).forEach(p=>remotePlayers.set(p.id,p));document.getElementById('roomLabel').textContent=netRoom;document.getElementById('onlineCount').textContent=data.count||1;document.getElementById('networkBar').style.display='block';document.getElementById('status').textContent='🌐 Conectado a la sala '+netRoom;loadPlayerSave();});
+ netSocket.on('player-joined',p=>{remotePlayers.set(p.id,p);document.getElementById('onlineCount').textContent=remotePlayers.size+1;addChat('Sistema',p.name+' se unió a la sala.');});
+ netSocket.on('player-state',p=>{if(p.id!==netSocket.id)remotePlayers.set(p.id,p);});
+ netSocket.on('player-left',id=>{const p=remotePlayers.get(id);remotePlayers.delete(id);document.getElementById('onlineCount').textContent=remotePlayers.size+1;if(p)addChat('Sistema',p.name+' salió de la sala.');});
+ netSocket.on('player-count',n=>document.getElementById('onlineCount').textContent=n);
+ netSocket.on('world-chat',m=>{if(m.name!==name)addChat(m.name,m.message);});
+ netSocket.on('network-error',msg=>{document.getElementById('status').textContent=msg;});
+ netSocket.on('disconnect',()=>{document.getElementById('status').textContent='Conexión perdida. Intentando reconectar...';});
+}
+document.getElementById('copyRoom').onclick=()=>{if(netRoom&&navigator.clipboard)navigator.clipboard.writeText(netRoom).then(()=>{document.getElementById('copyRoom').textContent='¡COPIADO!';});};
+const PLAYER_RADIUS=12;
+function circleHitsBuilding(x,y,b,pad=PLAYER_RADIUS){
+ const left=b[0]-pad,right=b[0]+b[2]+pad,top=b[1]-pad,bottom=b[1]+b[3]+pad;
+ const cx=Math.max(left,Math.min(x,right)),cy=Math.max(top,Math.min(y,bottom));
+ return (x-cx)*(x-cx)+(y-cy)*(y-cy)<pad*pad;
+}
+// Edificios fijos declarados antes de crear NPC para que las colisiones
+// nunca consulten una variable todavía sin inicializar.
+const worldChunks=new Map();
+function chunkAt(cx,cy){
+ const id=cx+','+cy;
+ if(worldChunks.has(id))return worldChunks.get(id);
+ let seed=((cx*73856093)^(cy*19349663))>>>0;
+ const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+ const b=[],tr=[];
+ const ox=cx*1000,oy=cy*1000;
+ const palette=['#c98f69','#8a9eb0','#d2b77b','#8fae9a','#c28b83'];
+ // Ubicación por intentos: sin solapamientos y dejando libres las dos avenidas
+ // principales (y=0 y x=0), además de un margen alrededor de cada edificio.
+ for(let i=0;i<5;i++){
+  let placed=false;
+  for(let attempt=0;attempt<100&&!placed;attempt++){
+   const w=120+rnd()*85,h=110+rnd()*75;
+   const x=ox+220+rnd()*(560-w),y=oy+220+rnd()*(560-h);
+   const roadClearance=85;
+   const crossesRoad=(Math.abs(y+h/2)<roadClearance+h/2)||(Math.abs(x+w/2)<roadClearance+w/2);
+   const overlaps=b.some(q=>x<q[0]+q[2]+38&&x+w>q[0]-38&&y<q[1]+q[3]+38&&y+h>q[1]-38);
+   const overlapsFixed=buildings.some(q=>x<q[0]+q[2]+38&&x+w>q[0]-38&&y<q[1]+q[3]+38&&y+h>q[1]-38);
+   if(!crossesRoad&&!overlaps&&!overlapsFixed){b.push([x,y,w,h,palette[Math.floor(rnd()*palette.length)]]);placed=true;}
+  }
+ }
+ for(let i=0;i<38;i++){
+  const x=ox+20+rnd()*960,y=oy+20+rnd()*960;
+  const nearBuilding=b.concat(buildings).some(q=>x>q[0]-55&&x<q[0]+q[2]+55&&y>q[1]-55&&y<q[1]+q[3]+55);
+  const nearRoad=Math.abs(x)<105||Math.abs(y)<105;
+  if(!nearBuilding&&!nearRoad)tr.push({x,y,s:.75+rnd()*.5,phase:rnd()*6});
+ }
+ const data={b,tr};worldChunks.set(id,data);return data;
+}
+function ensureChunks(){
+ const cx=Math.floor(player.x/1000),cy=Math.floor(player.y/1000);
+ for(let yy=cy-2;yy<=cy+2;yy++)for(let xx=cx-2;xx<=cx+2;xx++)chunkAt(xx,yy);
+}
+function nearbyChunkBuildings(x,y){
+ const cx=Math.floor(x/1000),cy=Math.floor(y/1000),out=[];
+ for(let yy=cy-1;yy<=cy+1;yy++)for(let xx=cx-1;xx<=cx+1;xx++)out.push(...chunkAt(xx,yy).b);
+ return out;
+}
+function blockedAt(x,y){return buildings.some(b=>circleHitsBuilding(x,y,b))||nearbyChunkBuildings(x,y).some(b=>circleHitsBuilding(x,y,b));}
+function moveEntityWithCollision(entity,dx,dy){
+ // Movimiento en pasos cortos: evita atravesar esquinas y edificios a alta velocidad.
+ const total=Math.hypot(dx,dy),steps=Math.max(1,Math.ceil(total/5));
+ const sx=dx/steps,sy=dy/steps;
+ for(let i=0;i<steps;i++){
+  const nx=entity.x+sx;
+  if(!blockedAt(nx,entity.y))entity.x=nx;
+  const ny=entity.y+sy;
+  if(!blockedAt(entity.x,ny))entity.y=ny;
+ }
+}
+function moveWithCollision(dx,dy){moveEntityWithCollision(player,dx,dy);}
+function findFreeSpot(x,y,spread=500){
+ // Búsqueda en anillos: evita devolver coordenadas dentro de edificios.
+ for(let ring=0;ring<12;ring++){
+  const count=ring===0?1:16;
+  const radius=ring===0?0:Math.min(spread,45+ring*42);
+  for(let j=0;j<count;j++){
+   const a=(j/count)*Math.PI*2+(ring%2)*.17;
+   const px=x+Math.cos(a)*radius,py=y+Math.sin(a)*radius;
+   if(!blockedAt(px,py))return {x:px,y:py};
+  }
+ }
+ // La avenida central está reservada y libre de construcciones.
+ for(let k=0;k<24;k++){
+  const px=(k%2?1:-1)*(125+k*13),py=(k%3-1)*34;
+  if(!blockedAt(px,py))return {x:px,y:py};
+ }
+ return {x:0,y:0};
+}
+function npcFreeTarget(n,range=260){
+ for(let k=0;k<36;k++){
+  const a=Math.random()*Math.PI*2,r=55+Math.random()*range;
+  const x=n.x+Math.cos(a)*r,y=n.y+Math.sin(a)*r;
+  if(!blockedAt(x,y))return {x,y};
+ }
+ return findFreeSpot(n.x,n.y,Math.max(500,range*2));
+}
+function setNpcTarget(n,x,y,range=260){
+ if(!blockedAt(x,y)){n.tx=x;n.ty=y;return;}
+ const safe=findFreeSpot(x,y,range);n.tx=safe.x;n.ty=safe.y;
+}
+let lootCoins=22;
+const missionState={index:0,progress:0,coins:22,distance:0,jumps:0,seconds:0};
+function getWalletCoins(){return missionState.coins+lootCoins-22;}
+function spendWalletCoins(cost){
+ if(getWalletCoins()<cost)return false;
+ const fromMissions=Math.min(missionState.coins,cost);
+ missionState.coins-=fromMissions;
+ const remainder=cost-fromMissions;
+ if(remainder>0)lootCoins-=remainder;
+ return true;
+}
+const skinOptions=[
+ {name:'Aventurero',color:'#2879d0',cost:0},{name:'Rojo fuego',color:'#e34b4b',cost:100},
+ {name:'Verde esmeralda',color:'#35d18a',cost:100},{name:'Violeta neón',color:'#bd65ff',cost:250},
+ {name:'Oro brillante',color:'#ffd32a',cost:100,glow:'gold'},{name:'Cian eléctrico',color:'#22e8ff',cost:400,glow:'cyan'},
+ {name:'Rosa cósmico',color:'#ff69c8',cost:600,glow:'pink'},{name:'Sombra',color:'#394452',cost:700},
+ {name:'Oro real',color:'#ffbd28',cost:1000,glow:'gold'},{name:'Arcoíris legendario',color:'#ffffff',cost:1000,glow:'rainbow'},
+ {name:'Diamante',color:'#b9f7ff',cost:1000,glow:'diamond'},{name:'Plasma',color:'#a46bff',cost:1000,glow:'rainbow'}
+];
+const ownedSkins=new Set([0]);
+const missionTemplates=[
+ {name:'Camina {n} metros',goal:n=>n,kind:'distance',unit:'m'},
+ {name:'Corre {n} metros',goal:n=>n,kind:'run',unit:'m'},
+ {name:'Salta {n} veces',goal:n=>n,kind:'jumps',unit:'saltos'},
+ {name:'Explora durante {n} segundos',goal:n=>n,kind:'time',unit:'s'},
+ {name:'Recorre {n} metros por el mundo',goal:n=>n,kind:'distance',unit:'m'}
+];
+function missionFor(i){
+ const t=missionTemplates[i%missionTemplates.length],level=Math.floor(i/5)+1;
+ const goal=t.kind==='time'?Math.min(20+level*2,180):t.kind==='jumps'?Math.min(3+level,35):Math.min(100+level*25,2500);
+ return {title:t.name.replace('{n}',goal),goal,kind:t.kind,unit:t.unit,reward:20+Math.min(level*2,180)};
+}
+function renderMission(){
+ const m=missionFor(missionState.index),v=Math.min(m.goal,Math.floor(missionState.progress));
+ document.getElementById('missionCount').textContent=(missionState.index+1)+' / 10000';
+ document.getElementById('missionName').textContent=m.title;
+ document.getElementById('missionProgress').textContent=v+' / '+m.goal+' '+m.unit;
+ document.getElementById('missionBar').style.width=(100*v/m.goal)+'%';
+ document.getElementById('coins').textContent='🪙 '+getWalletCoins()+' monedas';
+}
+function addMissionProgress(kind,amount){
+ const m=missionFor(missionState.index);
+ if(m.kind!==kind||missionState.index>=10000)return;
+ missionState.progress+=amount;
+ if(missionState.progress>=m.goal){
+  missionState.coins+=m.reward;missionState.index++;missionState.progress=0;
+  document.getElementById('missionName').textContent='¡Misión completada! +'+m.reward+' monedas';
+ }
+ renderMission();scheduleSave();
+}
+function showPower(msg){const el=document.getElementById('powerToast');el.textContent=msg;el.style.display='block';clearTimeout(showPower.timer);showPower.timer=setTimeout(()=>el.style.display='none',2300)}
+function activatePower(kind){if(kind==='speed'){speedBoost=8;showPower('⚡ RAPIDEZ EXTREMA: 8 segundos');}else if(kind==='shield'){shieldBoost=8;showPower('🛡️ ESCUDO: 8 segundos');}else if(kind==='coins'){missionState.coins+=500;renderMission();scheduleSave();showPower('🪙 CÓDIGO SECRETO: +500 monedas');}}
+function drawSkinMenu(){
+ const list=document.getElementById('skinList');list.innerHTML='';
+ skinOptions.forEach((s,i)=>{
+  const owned=ownedSkins.has(i),selected=player.skin===i;
+  const b=document.createElement('button');
+  b.style.cssText='text-align:left;border:1px solid #ffffff30;border-radius:12px;padding:11px;background:#ffffff10;color:white;min-height:75px';
+  b.innerHTML='<span style="display:inline-block;width:19px;height:19px;border-radius:50%;vertical-align:middle;background:'+s.color+';border:2px solid #ffffff88;box-shadow:0 0 12px '+s.color+'"></span> <b>'+s.name+'</b><br><small>'+(selected?'EQUIPADA':owned?'Desbloqueada':'🪙 '+s.cost)+'</small>';
+  if(s.glow)b.style.boxShadow='inset 0 0 18px '+s.color+'55';
+  b.onclick=()=>{
+   if(owned){player.skin=i;drawSkinMenu();scheduleSave();return;}
+   if(spendWalletCoins(s.cost)){
+    ownedSkins.add(i);
+    player.skin=i;
+    renderMission();
+    updateHud();
+    drawSkinMenu();
+    scheduleSave();
+    showPower('¡Skin '+s.name+' desbloqueada y equipada!');
+   }else{
+    showPower('Te faltan '+(s.cost-getWalletCoins())+' monedas para esta skin.');
+   }
+  };
+  list.appendChild(b);
+ });
+}
+document.getElementById('openSkins').onclick=()=>{drawSkinMenu();document.getElementById('skinPanel').style.display='flex'};
+document.getElementById('closeSkins').onclick=()=>document.getElementById('skinPanel').style.display='none';
+renderMission();
+const camera={x:0,y:0};
+const buildings=[
+ // Manzanas fijas: separadas entre sí y fuera de las dos avenidas centrales.
+ [-690,-690,190,170,'#c98f69'],[-350,-690,210,170,'#8a9eb0'],[120,-690,210,170,'#d2b77b'],[500,-690,190,170,'#8fae9a'],
+ [-690,190,190,180,'#8f9db6'],[-350,430,210,170,'#b4a17c'],[120,430,220,170,'#829eaa'],[500,190,190,180,'#c28b83']
+];
+const trees=[];
+for(let y=-650;y<=650;y+=115)for(let x=-700;x<=700;x+=130){if(Math.abs(x)<320&&Math.abs(y)<280)continue;if((Math.sin(x*2.3+y*1.7)*1000|0)%3!==0){
+ const tx=x+Math.sin(y)*24,ty=y+Math.cos(x)*20;
+ const nearBuilding=buildings.some(b=>tx>b[0]-55&&tx<b[0]+b[2]+55&&ty>b[1]-55&&ty<b[1]+b[3]+55);
+ const nearRoad=Math.abs(tx)<105||Math.abs(ty)<105;
+ if(!nearBuilding&&!nearRoad)trees.push({x:tx,y:ty,s:.75+((Math.sin(x+y)*.5+.5)*.55),phase:Math.random()*6});
+}}
+const npcSpawned=[];
+const npcs=Array.from({length:1000},(_,i)=>{
+ // Los 1.000 NPC aparecen dentro del mundo jugable, sobre suelo libre.
+ // Se separan entre sí y de los edificios para evitar montones y personajes atrapados.
+ const angle=i*2.399963229728653 + (Math.random()-.5)*.18;
+ const radius=150+Math.sqrt(i/999)*1120;
+ const wantedX=Math.cos(angle)*radius,wantedY=Math.sin(angle)*radius;
+ let spot=findFreeSpot(wantedX,wantedY,360);
+ for(let tries=0;tries<8;tries++){
+  if(!npcSpawned.some(p=>Math.hypot(p.x-spot.x,p.y-spot.y)<30))break;
+  const a=angle+Math.random()*1.2-.6,r=radius+Math.random()*100;
+  spot=findFreeSpot(Math.cos(a)*r,Math.sin(a)*r,420);
+ }
+ npcSpawned.push(spot);
+ const hasWeapon=Math.random()<.22;
+ const n={x:spot.x,y:spot.y,alive:true,respawn:0,hp:100,
+  weapon:hasWeapon?(Math.random()<.5?'Pistola':'Escopeta'):null,
+  ammo:hasWeapon?24:0,shootWait:Math.random()*2,
+  phase:i*1.7,speed:.25+Math.random()*.35,
+  color:['#e6b08c','#d8dce6','#c2a4df','#e8cf80'][i%4],
+  tx:spot.x,ty:spot.y,think:1+(i%4),burst:0,z:0,vz:0,dir:0,mode:'paseando',
+  updateWait:Math.random()*.08};
+ const target=npcFreeTarget(n,190);n.tx=target.x;n.ty=target.y;
+ return n;
+});
+const pickups=[];
+const bullets=[];
+let playerHP=100,playerWeapon=null,playerAmmo=0,fireCooldown=0,invulnerable=0;
+let speedBoost=0,shieldBoost=0,voiceEnabled=true;
+let gameOverMessage='',lobbyX=0,lobbyY=0;
+function makePickup(x,y,type){
+ pickups.push({x,y,type,life:180+Math.random()*120,phase:Math.random()*6});
+}
+function updateHud(){
+ document.getElementById('hp').textContent=Math.max(0,Math.ceil(playerHP));
+ document.getElementById('weapon').textContent=playerWeapon?(playerWeapon==='Pistola'?'🔫 Pistola':'💥 Escopeta'):'Sin arma';
+ document.getElementById('ammo').textContent=playerAmmo;
+ document.getElementById('lootCoins').textContent=lootCoins;
+ document.getElementById('coins').textContent='🪙 '+getWalletCoins()+' monedas';
+}
+
+function currentSaveData(){
+ return {
+  version:1,
+  name:(document.getElementById('playerName').value.trim()||'Jugador').slice(0,18),
+  mission:{index:missionState.index,progress:missionState.progress,coins:missionState.coins,distance:missionState.distance,jumps:missionState.jumps,seconds:missionState.seconds},
+  lootCoins:lootCoins,
+  ownedSkins:[...ownedSkins],
+  equippedSkin:player.skin
+ };
+}
+function applySaveData(data){
+ if(!data||typeof data!=='object')return;
+ const m=data.mission||{};
+ missionState.index=Math.max(0,Math.min(10000,Number(m.index)||0));
+ missionState.progress=Math.max(0,Number(m.progress)||0);
+ missionState.coins=Math.max(0,Number(m.coins)||0);
+ missionState.distance=Math.max(0,Number(m.distance)||0);
+ missionState.jumps=Math.max(0,Number(m.jumps)||0);
+ missionState.seconds=Math.max(0,Number(m.seconds)||0);
+ lootCoins=Math.max(0,Number(data.lootCoins)||0);
+ ownedSkins.clear();ownedSkins.add(0);
+ if(Array.isArray(data.ownedSkins))data.ownedSkins.forEach(i=>{i=Number(i);if(Number.isInteger(i)&&i>=0&&i<skinOptions.length)ownedSkins.add(i);});
+ const equipped=Number(data.equippedSkin);
+ player.skin=ownedSkins.has(equipped)?equipped:0;
+ if(data.name)document.getElementById('playerName').value=String(data.name).slice(0,18);
+ renderMission();updateHud();drawSkinMenu();
+}
+async function loadPlayerSave(){
+ if(saveLoaded)return;
+ try{
+  const response=await fetch('/api/save/'+encodeURIComponent(profileId));
+  if(!response.ok)throw new Error('No se pudo leer la partida');
+  const result=await response.json();
+  if(result&&result.save){applySaveData(result.save);document.getElementById('status').textContent='🌐 Partida recuperada · Sala '+netRoom;}
+  else{saveLoaded=true;savePlayerNow();document.getElementById('status').textContent='🌐 Nueva partida · Sala '+netRoom;return;}
+  saveLoaded=true;
+ }catch(error){
+  // Respaldo local si el servidor aún no está publicado o no responde.
+  try{const local=JSON.parse(localStorage.getItem('mundoVivoLocalSave')||'null');if(local)applySaveData(local);}catch(_){}
+  saveLoaded=true;
+  document.getElementById('status').textContent='Partida local cargada · revisa la conexión del servidor';
+ }
+}
+async function savePlayerNow(){
+ if(!saveLoaded)return;
+ const data=currentSaveData();
+ try{localStorage.setItem('mundoVivoLocalSave',JSON.stringify(data));}catch(_){}
+ try{
+  await fetch('/api/save/'+encodeURIComponent(profileId),{
+   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),keepalive:true
+  });
+ }catch(_){}
+}
+function scheduleSave(){
+ if(!saveLoaded)return;
+ clearTimeout(saveTimer);saveTimer=setTimeout(savePlayerNow,1200);
+}
+setInterval(savePlayerNow,10000);
+window.addEventListener('pagehide',savePlayerNow);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')savePlayerNow();});
+function respawnPlayer(){
+ player.x=lobbyX;player.y=lobbyY;player.z=0;player.vz=0;playerHP=100;playerWeapon=null;playerAmmo=0;invulnerable=3;
+ document.getElementById('status').textContent='💫 ¡Volviste al lobby! Te has recuperado.';
+ updateHud();
+}
+function firePlayer(){
+ if(!started||!playerWeapon||playerAmmo<=0||fireCooldown>0)return;
+ playerAmmo--;fireCooldown=playerWeapon==='Escopeta'?.85:.32;
+ const spread=playerWeapon==='Escopeta'?[-.22,-.11,0,.11,.22]:[0];
+ spread.forEach(a=>{const ang=player.dir+a;bullets.push({x:player.x,y:player.y-20,vx:Math.cos(ang)*620,vy:Math.sin(ang)*620,owner:'player',life:1.15,damage:playerWeapon==='Escopeta'?42:34})});
+ updateHud();
+}
+function pickNearest(){
+ let best=null,bd=75;
+ for(const q of pickups){const d=Math.hypot(q.x-player.x,q.y-player.y);if(d<bd){best=q;bd=d}}
+ if(!best)return;
+ if(best.type==='Monedas'){lootCoins+=10}
+ else if(best.type==='Pistola'){playerWeapon='Pistola';playerAmmo+=36}
+ else if(best.type==='Escopeta'){playerWeapon='Escopeta';playerAmmo+=18}
+ pickups.splice(pickups.indexOf(best),1);updateHud();
+ document.getElementById('status').textContent='¡Recogiste '+best.type+'!';
+}
+document.getElementById('fireBtn').onclick=firePlayer;
+document.getElementById('pickBtn').onclick=pickNearest;
+const mf=document.getElementById('mobileFire'),mp=document.getElementById('mobilePick');if(mf)mf.onclick=firePlayer;if(mp)mp.onclick=pickNearest;
+addEventListener('keydown',e=>{if(e.key.toLowerCase()==='f')firePlayer();if(e.key.toLowerCase()==='e')pickNearest()});
+function key(...a){return a.some(k=>keys.has(k))}
+function update(dt){
+ worldTime+=dt;speedBoost=Math.max(0,speedBoost-dt);shieldBoost=Math.max(0,shieldBoost-dt);
+ let dx=(key('d','arrowright')?1:0)-(key('a','arrowleft')?1:0);
+ let dy=(key('s','arrowdown')?1:0)-(key('w','arrowup')?1:0);
+ const len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;
+ const moving=!!(dx||dy),run=key('shift');
+ const speed=(run?300:175)*(speedBoost>0?2.25:1);
+ const moved=speed*dt*(moving?1:0);
+ moveWithCollision(dx*speed*dt,dy*speed*dt);
+ if(moving){missionState.distance+=moved;addMissionProgress(run?'run':'distance',moved);if(missionState.index<10000&&missionFor(missionState.index).kind==='distance'){} }
+ if(moving){player.dir=Math.atan2(dy,dx);player.walk+=dt*(run?13:8)}
+ const jumpDown=key(' ');if(jumpDown&&!jumpWasDown&&player.z===0){player.vz=470;missionState.jumps++;addMissionProgress('jumps',1)}jumpWasDown=jumpDown;
+ player.vz-=1150*dt;player.z=Math.max(0,player.z+player.vz*dt);if(player.z===0)player.vz=0;
+ ensureChunks();
+ camera.x+=(player.x-camera.x)*Math.min(1,dt*5);camera.y+=(player.y-camera.y)*Math.min(1,dt*5);
+ netEmitWait-=dt;if(netSocket&&netSocket.connected&&netEmitWait<=0){netEmitWait=.06;netSocket.volatile.emit('player-state',{x:player.x,y:player.y,z:player.z,dir:player.dir,walk:player.walk});}
+ npcs.forEach((n,i)=>{
+  if(!n.alive){n.respawn-=dt;if(n.respawn<=0){n.alive=true;n.hp=100;n.weapon=Math.random()<.28?(Math.random()<.5?'Pistola':'Escopeta'):null;n.ammo=n.weapon?24:0;const spawn=findFreeSpot(player.x,player.y,1100);n.x=spawn.x;n.y=spawn.y;const dest=npcFreeTarget(n,320);n.tx=dest.x;n.ty=dest.y;n.think=2;}return;}
+  const npcDistance=Math.hypot(n.x-player.x,n.y-player.y);
+  if(npcDistance>1750)return;
+  // Los NPC algo alejados actualizan su IA en intervalos breves para mejorar FPS.
+  n.updateWait=(n.updateWait||0)-dt;
+  if(npcDistance>850&&n.updateWait>0)return;
+  if(npcDistance>850)n.updateWait=.10+(i%5)*.025;
+  if(blockedAt(n.x,n.y)){const safe=findFreeSpot(n.x,n.y,900);n.x=safe.x;n.y=safe.y;n.tx=safe.x;n.ty=safe.y;n.think=0;}
+  n.think-=dt;
+  const toX=n.tx-n.x,toY=n.ty-n.y,dist=Math.hypot(toX,toY);
+  // Eligen destinos nuevos, alternan paseo y carreras cortas.
+  if(n.think<=0||dist<18){
+   const target=npcFreeTarget(n,300);
+   n.tx=target.x;n.ty=target.y;
+   n.think=2.5+Math.random()*5;
+   if(Math.random()<.12)n.burst=.7+Math.random()*1.1;
+   if(Math.random()<.035&&n.z===0)n.vz=280;
+  }
+  // A veces se acercan al jugador, como otros jugadores del mundo.
+  if(i%4===0&&Math.random()<.0005){
+   setNpcTarget(n,player.x+(Math.random()-.5)*180,player.y+(Math.random()-.5)*180,360);
+  }
+  const moving=dist>5,run=n.burst>0;
+  const speed=run?112:52;
+  if(moving){
+   const vx=toX/(dist||1),vy=toY/(dist||1);
+   n.dir=Math.atan2(vy,vx);
+   const oldX=n.x,oldY=n.y;
+   moveEntityWithCollision(n,vx*speed*dt,vy*speed*dt);
+   if(n.x===oldX&&n.y===oldY){const target=npcFreeTarget(n,280);n.tx=target.x;n.ty=target.y;n.think=.7;}
+   n.phase+=dt*(run?8:4);
+  }
+  if(n.burst>0)n.burst-=dt;
+  n.vz-=1050*dt;n.z=Math.max(0,n.z+n.vz*dt);if(n.z===0)n.vz=0;
+ });
+ // Spawn pickups around the player as the endless world is explored.
+ if(pickups.length<45&&Math.random()<dt*.9){
+  const a=Math.random()*Math.PI*2,r=180+Math.random()*850;
+  const spot=findFreeSpot(player.x+Math.cos(a)*r,player.y+Math.sin(a)*r,90);makePickup(spot.x,spot.y,['Monedas','Pistola','Escopeta'][Math.floor(Math.random()*3)]);
+ }
+ pickups.forEach(q=>q.life-=dt);
+ for(let i=pickups.length-1;i>=0;i--)if(pickups[i].life<=0)pickups.splice(i,1);
+ // NPCs can collect nearby gear, then use it in arcade-style combat.
+ for(const n of npcs){
+  if(!n.alive)continue;
+  for(let j=pickups.length-1;j>=0;j--){
+   const q=pickups[j];if(Math.hypot(q.x-n.x,q.y-n.y)<24){
+    if(q.type==='Monedas')n.hasCoins=true;else if(!n.weapon){n.weapon=q.type;n.ammo=q.type==='Pistola'?30:14;}
+    pickups.splice(j,1);break;
+   }
+  }
+  n.shootWait-=dt;
+  const d=Math.hypot(player.x-n.x,player.y-n.y);
+  if(n.weapon&&n.ammo>0&&d<390&&n.shootWait<=0&&bullets.length<180){
+   const ang=Math.atan2(player.y-n.y,player.x-n.x);
+   bullets.push({x:n.x,y:n.y-22,vx:Math.cos(ang)*390,vy:Math.sin(ang)*390,owner:'npc',life:1.7,damage:n.weapon==='Escopeta'?9:5});
+   n.ammo--;n.shootWait=n.weapon==='Escopeta'?6.5:4.8;
+   setNpcTarget(n,player.x+(Math.random()-.5)*100,player.y+(Math.random()-.5)*100,360);n.burst=.45;
+  }else if(d<300&&!n.weapon&&Math.random()<dt*.12){setNpcTarget(n,player.x+(Math.random()-.5)*90,player.y+(Math.random()-.5)*90,360);n.burst=1;}
+ }
+ fireCooldown=Math.max(0,fireCooldown-dt);invulnerable=Math.max(0,invulnerable-dt);
+ for(let i=bullets.length-1;i>=0;i--){
+  const b=bullets[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
+  if(b.life<=0||blockedAt(b.x,b.y)){bullets.splice(i,1);continue;}
+  if(b.owner==='player'){
+   let hit=null;for(const n of npcs){if(n.alive&&Math.hypot(n.x-b.x,n.y-22-b.y)<19){hit=n;break}}
+   if(hit){hit.hp-=b.damage;bullets.splice(i,1);if(hit.hp<=0){hit.alive=false;hit.respawn=60;makePickup(hit.x,hit.y,'Monedas');if(hit.weapon)makePickup(hit.x+18,hit.y,hit.weapon);document.getElementById('status').textContent='NPC eliminado · reaparece en 60 segundos';}}
+  }else if(invulnerable<=0&&shieldBoost<=0&&Math.hypot(player.x-b.x,player.y-20-b.y)<18){
+   playerHP-=b.damage;bullets.splice(i,1);
+   if(playerHP<=0)respawnPlayer();
+  }
+ }
+ // Keep the player and NPC population inside an endless, procedurally extended map.
+ if(Math.random()<dt*.025){const spot=findFreeSpot(player.x+(Math.random()-.5)*500,player.y+(Math.random()-.5)*500,120);makePickup(spot.x,spot.y,'Monedas');}
+ updateHud();
+ document.getElementById('status').textContent=moving?(run?'Corriendo por el mundo':'Caminando y explorando'):'Explorando el mundo infinito';
+}
+function project(x,y){return {x:W/2+(x-camera.x),y:H/2+(y-camera.y)}}
+function rounded(x,y,w,h,r,c){ctx.fillStyle=c;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
+function drawGround(){
+ ctx.fillStyle='#719d68';ctx.fillRect(0,0,W,H);
+ // subtle grass
+ for(let y=-40;y<H+40;y+=42)for(let x=-40;x<W+40;x+=47){let wx=x+camera.x%47,wy=y+camera.y%42;ctx.strokeStyle='#ffffff0b';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+5+(Math.sin(wx*wy)*3),y-5);ctx.stroke()}
+ // Avenidas repetidas en cada sector del mundo infinito.
+ const left=camera.x-W/2-100,right=camera.x+W/2+100,top=camera.y-H/2-100,bottom=camera.y+H/2+100;
+ const roadXs=[],roadYs=[];
+ for(let wx=Math.floor(left/1000)*1000;wx<=right;wx+=1000)roadXs.push(project(wx,0).x);
+ for(let wy=Math.floor(top/1000)*1000;wy<=bottom;wy+=1000)roadYs.push(project(0,wy).y);
+ ctx.fillStyle='#657078';
+ roadYs.forEach(y=>ctx.fillRect(0,y-57,W,114));
+ roadXs.forEach(x=>ctx.fillRect(x-57,0,114,H));
+ ctx.strokeStyle='#e8dca5';ctx.lineWidth=3;ctx.setLineDash([22,20]);ctx.beginPath();
+ roadYs.forEach(y=>{ctx.moveTo(0,y);ctx.lineTo(W,y)});roadXs.forEach(x=>{ctx.moveTo(x,0);ctx.lineTo(x,H)});ctx.stroke();ctx.setLineDash([]);
+ // park paths
+ ctx.strokeStyle='#c7b995';ctx.lineWidth=24;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(project(-700,-300).x,project(-700,-300).y);ctx.quadraticCurveTo(W*.35,H*.25,project(700,430).x,project(700,430).y);ctx.stroke();
+}
+function drawBuilding(b){
+ const p=project(b[0],b[1]),w=b[2],h=b[3];
+ // Edificio 2D sólido: la fachada, el lateral y el techo quedan dentro
+ // de la misma huella usada por las colisiones.
+ const side=Math.min(16,Math.max(9,w*.07));
+ ctx.fillStyle='#00000038';
+ ctx.beginPath();ctx.roundRect(p.x+5,p.y+7,w-2,h-2,5);ctx.fill();
+ ctx.fillStyle='#718087';ctx.fillRect(p.x,p.y,w,h);
+ ctx.fillStyle='#263b48';
+ ctx.beginPath();ctx.moveTo(p.x+side,p.y+side);ctx.lineTo(p.x+w-side,p.y+side);
+ ctx.lineTo(p.x+w-side,p.y+h-side);ctx.lineTo(p.x+side,p.y+h-side);ctx.closePath();ctx.fill();
+ ctx.fillStyle=b[4];
+ ctx.fillRect(p.x+side,p.y+side,w-side*2,h-side*2);
+ // Borde superior y franja de profundidad.
+ ctx.fillStyle='#ffffff45';ctx.fillRect(p.x+side,p.y+side,w-side*2,8);
+ ctx.fillStyle='#00000020';ctx.fillRect(p.x+side,p.y+h-side-10,w-side*2,10);
+ // Ventanas alineadas y siempre dentro de la fachada.
+ const cols=Math.max(2,Math.floor((w-48)/42)),rows=Math.max(2,Math.floor((h-58)/42));
+ const innerW=w-side*2-22,innerH=h-side*2-42;
+ for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+  const xx=p.x+side+11+c*(innerW/cols),yy=p.y+side+20+r*(innerH/rows);
+  ctx.fillStyle='#233b4b';ctx.fillRect(xx,yy,20,23);
+  ctx.fillStyle='#bde5ed';ctx.fillRect(xx+2,yy+2,16,19);
+  ctx.fillStyle='#ffffff75';ctx.fillRect(xx+3,yy+3,3,16);
+  ctx.fillStyle='#527a87';ctx.fillRect(xx+10,yy+2,1,19);
+ }
+ // Puerta centrada.
+ const doorW=Math.min(30,w*.18),doorH=Math.min(37,h*.24);
+ ctx.fillStyle='#34434b';ctx.fillRect(p.x+w/2-doorW/2,p.y+h-side-doorH,doorW,doorH);
+ ctx.fillStyle='#d9bd82';ctx.beginPath();
+ ctx.arc(p.x+w/2+doorW*.28,p.y+h-side-doorH/2,2,0,Math.PI*2);ctx.fill();
+ // Rótulo discreto que ayuda a distinguir el frente del edificio.
+ ctx.fillStyle='#ffffff35';ctx.fillRect(p.x+w*.22,p.y+side+5,w*.56,3);
+}
+function drawTree(t){
+ const p=project(t.x,t.y),s=t.s,wind=Math.sin(worldTime*1.8+t.phase)*4;
+ ctx.fillStyle='#00000030';ctx.beginPath();ctx.ellipse(p.x+8,p.y+13,24*s,10*s,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#70543b';ctx.fillRect(p.x-5*s,p.y-22*s,10*s,31*s);
+ ctx.fillStyle='#2e6945';ctx.beginPath();ctx.arc(p.x+wind,p.y-34*s,23*s,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#438d56';ctx.beginPath();ctx.arc(p.x-9*s+wind,p.y-44*s,15*s,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(p.x+11*s+wind,p.y-39*s,14*s,0,Math.PI*2);ctx.fill();
+}
+function drawPerson(x,y,color,phase,scale=1,isPlayer=false,z=0,dir=0){
+ const p=project(x,y),bob=Math.abs(Math.sin(phase))*3*scale;
+ ctx.fillStyle='#00000030';ctx.beginPath();ctx.ellipse(p.x,p.y+8,13*scale,6*scale,0,0,Math.PI*2);ctx.fill();
+ ctx.save();ctx.translate(p.x,p.y-z-bob);ctx.rotate(dir*.10);
+ const step=Math.sin(phase)*5*scale;
+ ctx.strokeStyle='#263746';ctx.lineWidth=5*scale;ctx.lineCap='round';
+ ctx.beginPath();ctx.moveTo(-4*scale,-4*scale);ctx.lineTo(-5*scale+step,-16*scale);ctx.moveTo(4*scale,-4*scale);ctx.lineTo(5*scale-step,-16*scale);ctx.stroke();
+ const skin=isPlayer?skinOptions[player.skin]:null;
+ if(isPlayer&&skin&&skin.glow){ctx.save();ctx.shadowBlur=20;ctx.shadowColor=skin.glow==='rainbow'?`hsl(${(worldTime*180)%360},100%,60%)`:skin.color;}
+ rounded(-9*scale,-37*scale,18*scale,25*scale,6*scale,isPlayer?skinOptions[player.skin].color:color);
+ if(isPlayer&&skin&&skin.glow){ctx.restore();if(skin.glow==='rainbow'){ctx.strokeStyle=`hsl(${(worldTime*180)%360},100%,65%)`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-25*scale,15*scale,0,Math.PI*2);ctx.stroke();}else if(skin.glow==='gold'||skin.glow==='diamond'){ctx.strokeStyle=skin.color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-25*scale,15*scale,0,Math.PI*2);ctx.stroke();}}
+ ctx.strokeStyle='#e8c1a0';ctx.lineWidth=4*scale;ctx.beginPath();ctx.moveTo(-8*scale,-31*scale);ctx.lineTo(-12*scale+step*.5,-18*scale);ctx.moveTo(8*scale,-31*scale);ctx.lineTo(12*scale-step*.5,-18*scale);ctx.stroke();
+ ctx.fillStyle='#eac09c';ctx.beginPath();ctx.arc(0,-44*scale,9*scale,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#4b342c';ctx.beginPath();ctx.arc(0,-48*scale,9*scale,Math.PI,Math.PI*2);ctx.fill();
+ if(isPlayer){ctx.fillStyle='#fff';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText('TÚ',0,-59*scale)}
+ ctx.restore();
+}
+function render(){
+ ctx.clearRect(0,0,W,H);drawGround();
+ // distant decorative water pond
+ const pond=project(-430,400);ctx.fillStyle='#5babb0';ctx.beginPath();ctx.ellipse(pond.x,pond.y,120,55,-.25,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ffffff55';ctx.lineWidth=3;ctx.stroke();
+ ensureChunks();
+ const minX=camera.x-W/2-300,maxX=camera.x+W/2+300,minY=camera.y-H/2-300,maxY=camera.y+H/2+300;
+ const cx0=Math.floor(minX/1000),cx1=Math.floor(maxX/1000),cy0=Math.floor(minY/1000),cy1=Math.floor(maxY/1000);
+ const procB=[],procT=[];
+ for(let cy=cy0;cy<=cy1;cy++)for(let cx=cx0;cx<=cx1;cx++){const ch=chunkAt(cx,cy);procB.push(...ch.b);procT.push(...ch.tr);}
+ const things=[
+  ...buildings.filter(b=>b[0]+b[2]>minX&&b[0]<maxX&&b[1]+b[3]>minY&&b[1]<maxY).map(b=>({y:b[1]+b[3],x:b[0],fn:()=>drawBuilding(b)})),
+  ...procB.map(b=>({y:b[1]+b[3],x:b[0],fn:()=>drawBuilding(b)})),
+  ...trees.filter(t=>t.x>minX&&t.x<maxX&&t.y>minY&&t.y<maxY).map(t=>({y:t.y,x:t.x,fn:()=>drawTree(t)})),
+  ...procT.map(t=>({y:t.y,x:t.x,fn:()=>drawTree(t)})),
+  ...npcs.filter(n=>n.alive&&n.x>minX&&n.x<maxX&&n.y>minY&&n.y<maxY).map(n=>({y:n.y,x:n.x,fn:()=>{
+   drawPerson(n.x,n.y,n.color,n.phase,.85,false,n.z,n.dir);
+   const q=project(n.x,n.y);
+   ctx.fillStyle='#071522cc';ctx.fillRect(q.x-13,q.y-67-n.z,26,4);
+   ctx.fillStyle='#65df83';ctx.fillRect(q.x-13,q.y-67-n.z,26*Math.max(0,n.hp/100),4);
+   if(n.weapon){ctx.fillStyle='#ffe28a';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText('🔫',q.x,q.y-72-n.z);}
+  }})),
+  ...pickups.map(q=>({y:q.y,x:q.x,fn:()=>{const p=project(q.x,q.y);ctx.fillStyle=q.type==='Monedas'?'#f5d34e':q.type==='Pistola'?'#9fb8cf':'#c6c6c6';ctx.beginPath();ctx.arc(p.x,p.y-10+Math.sin(worldTime*4+q.phase)*3,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#17212a';ctx.font='bold 9px system-ui';ctx.textAlign='center';ctx.fillText(q.type==='Monedas'?'$':q.type==='Pistola'?'🔫':'E',p.x,p.y-7)}})),
+  ...[...remotePlayers.values()].filter(p=>p.x>minX&&p.x<maxX&&p.y>minY&&p.y<maxY).map(p=>({y:p.y,x:p.x,fn:()=>{drawPerson(p.x,p.y,p.color||'#2879d0',p.walk||0,.98,false,p.z||0,p.dir||0);const q=project(p.x,p.y);ctx.fillStyle='#ffffff';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText(p.name||'Jugador',q.x,q.y-63-(p.z||0));}})),
+  {y:player.y,x:player.x,fn:()=>drawPerson(player.x,player.y,'#2879d0',player.walk,1.08,true,player.z,player.dir)}
+ ];
+ things.sort((a,b)=>a.y-b.y||a.x-b.x).forEach(o=>o.fn());
+ for(const b of bullets){const p=project(b.x,b.y);ctx.fillStyle=b.owner==='player'?'#ffe36b':'#ff6b55';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();}
+ // soft daylight vignette
+ const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.2,W/2,H/2,Math.max(W,H)*.75);g.addColorStop(0,'#ffffff00');g.addColorStop(1,'#06111b30');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+}
+
+// Chat local con NPC y voz del navegador. No es multijugador por internet.
+const social=document.getElementById('socialPanel'),chatLog=document.getElementById('chatLog'),chatInput=document.getElementById('chatInput');
+function addChat(who,msg){const line=document.createElement('div');line.textContent=who+': '+msg;chatLog.appendChild(line);chatLog.scrollTop=chatLog.scrollHeight;}
+function sendChat(){const msg=chatInput.value.trim();if(!msg)return;addChat('Tú',msg);chatInput.value='';if(netSocket&&netSocket.connected)netSocket.emit('world-chat',msg);if(voiceEnabled&&'speechSynthesis'in window){speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(msg));}if(!netSocket||!netSocket.connected){const replies=['¡Vamos a explorar!','He visto monedas por allí.','¡Cuidado con los NPC armados!','Prueba la tecla Q para correr más.','¡Buena aventura!'];setTimeout(()=>addChat('NPC',replies[Math.floor(Math.random()*replies.length)]),450);}}
+document.getElementById('openChat').onclick=()=>{social.style.display=social.style.display==='none'?'block':'none';};
+document.getElementById('sendChat').onclick=sendChat;chatInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
+document.getElementById('voiceBtn').onclick=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){document.getElementById('voiceStatus').textContent='Tu navegador no admite dictado por voz';return;}const rec=new SR();rec.lang='es-PE';rec.onstart=()=>document.getElementById('voiceStatus').textContent='Escuchando...';rec.onresult=e=>{chatInput.value=e.results[0][0].transcript;sendChat();};rec.onerror=()=>document.getElementById('voiceStatus').textContent='No se pudo activar el micrófono';rec.onend=()=>document.getElementById('voiceStatus').textContent='Dictado finalizado';rec.start();};
+addChat('Sistema','Chat listo. Cuando estés en una sala, tus mensajes llegarán a los demás jugadores.');
+addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key.toLowerCase();if(k==='g'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){social.style.display=social.style.display==='none'?'block':'none';}if(k==='q')activatePower('speed');if(k==='b')activatePower('shield');if(k==='k')activatePower('coins');if(k==='c'){social.style.display='block';chatInput.focus();}});
+
+function frame(t){const dt=Math.min((t-last)/1000||0,.04);last=t;if(started)update(dt);else worldTime+=dt;render();requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
