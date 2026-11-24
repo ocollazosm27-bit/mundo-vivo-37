@@ -2,211 +2,437 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Mundo Vivo 3.7 — Edificios 2D y NPC mejorados</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#101820">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Mundo Vivo 3.8</title>
 <style>
-  *{box-sizing:border-box} html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;font-family:system-ui,Segoe UI,Arial;color:#fff}
-  canvas{display:block;width:100vw;height:100vh;touch-action:none}
-  #hud{position:fixed;left:14px;top:14px;padding:10px 13px;background:#08131dcc;border:1px solid #ffffff24;border-radius:14px;backdrop-filter:blur(8px);font-size:13px;line-height:1.45;pointer-events:none}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;font-family:system-ui,Segoe UI,Arial,sans-serif;color:#fff;
+    overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  input{-webkit-user-select:text;user-select:text}
+  button{font-family:inherit;cursor:pointer}
+  #game{position:fixed;left:0;top:0;display:block;touch-action:none}
+  .box{background:#08131dcc;border:1px solid #ffffff24;border-radius:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);pointer-events:none}
+  .sm{border:0;border-radius:8px;padding:5px 8px;font-weight:800;font-size:12px;pointer-events:auto;color:#10221a;background:#8ee6a5}
+
+  /* ---------- HUD ---------- */
+  #topLeft{position:fixed;left:calc(12px + env(safe-area-inset-left,0px));top:calc(12px + env(safe-area-inset-top,0px));
+    display:flex;flex-direction:column;gap:8px;z-index:2;pointer-events:none;max-width:min(330px,calc(100vw - 24px))}
+  #hud{padding:9px 12px;font-size:13px;line-height:1.45}
   #hud b{font-size:15px;color:#b9f6ca}
-  #hint{position:fixed;right:14px;top:14px;padding:9px 12px;background:#08131dcc;border:1px solid #ffffff24;border-radius:12px;font-size:12px;pointer-events:none}
-  #touch{position:fixed;inset:auto 0 18px 0;display:none;justify-content:space-between;align-items:end;padding:0 18px;pointer-events:none}
-  .pad{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px);gap:5px;pointer-events:auto}
-  .pad button,.actions button{border:1px solid #ffffff55;background:#0b1729bb;color:white;border-radius:14px;font-size:20px;backdrop-filter:blur(8px);touch-action:none}
-  .pad button:active,.actions button:active{background:#3b8267}
-  .pad .up{grid-column:2}.pad .left{grid-column:1;grid-row:2}.pad .down{grid-column:2;grid-row:2}.pad .right{grid-column:3;grid-row:2}
-  .actions{display:flex;gap:8px;pointer-events:auto}.actions button{width:62px;height:62px;font-size:12px;font-weight:700}
-  #start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(#071321aa,#071321dd);padding:22px}
-  .panel{max-width:440px;text-align:center;background:#101f2feF;border:1px solid #ffffff2b;border-radius:22px;padding:25px;box-shadow:0 20px 80px #0009}
-  .panel h1{margin:0 0 8px;font-size:clamp(26px,6vw,40px)}.panel p{color:#c7d6df;line-height:1.5}
-  .panel button{border:0;border-radius:13px;padding:13px 22px;background:#8ee6a5;color:#10221a;font-weight:900;font-size:16px}
-  @media(max-width:760px),(pointer:coarse){#touch{display:flex}#hint{display:none}}
-#networkBar{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:3;display:none;padding:8px 12px;border:1px solid #ffffff35;border-radius:12px;background:#08131ddd;font-size:12px;white-space:nowrap}
-  #networkBar button{margin-left:7px;border:0;border-radius:7px;padding:5px 8px;background:#8ee6a5;font-weight:800}
-  #start input{width:100%;margin:5px 0;padding:10px;border-radius:9px;border:1px solid #ffffff45;background:#091827;color:white;font-size:14px}
+  #combatHud{padding:8px 12px;font-size:12px;line-height:1.55}
+  #hpBar{height:6px;background:#ffffff25;border-radius:6px;overflow:hidden;margin:3px 0 4px}
+  #hpFill{height:100%;width:100%;background:#65df83;border-radius:6px;transition:width .15s}
+  #networkBar{display:none;padding:7px 11px;font-size:12px;pointer-events:none}
+  #networkBar button{margin-left:6px}
+  #topRight{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));top:calc(12px + env(safe-area-inset-top,0px));
+    display:flex;flex-direction:column;align-items:flex-end;gap:8px;z-index:2;pointer-events:none;width:min(260px,45vw)}
+  #hint{padding:8px 12px;font-size:12px;line-height:1.5;width:100%}
+  #progressUI{width:100%;padding:10px 12px;font-size:12px}
+  #minimap{width:112px;height:112px;border-radius:50%;border:2px solid #ffffff40;background:#08131dcc}
+  #powerToast{display:none;position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:9;background:#10283a;border:1px solid #ffe36b;
+    padding:11px 16px;border-radius:12px;font-weight:800;text-align:center;max-width:90vw;pointer-events:none}
+  #hurt{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at center,#ff000000 40%,#ff1a1acc 100%);opacity:0}
+
+  /* ---------- Paneles ---------- */
+  #skinPanel{display:none;position:fixed;inset:0;background:#06111bdc;z-index:8;align-items:center;justify-content:center;padding:18px}
+  #skinBox{width:min(440px,100%);max-height:88vh;max-height:88dvh;overflow:auto;background:#132538;border:1px solid #ffffff35;border-radius:20px;padding:18px;-webkit-user-select:none}
+  #skinList{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  #skinList button{text-align:left;border:1px solid #ffffff30;border-radius:12px;padding:11px;background:#ffffff10;color:#fff;min-height:70px;font-size:13px}
+  #skinList button.cant{opacity:.55}
+  #socialPanel{position:fixed;left:calc(14px + env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(340px,calc(100vw - 28px));
+    z-index:7;background:#071522ee;border:1px solid #ffffff40;border-radius:14px;padding:10px;display:none;backdrop-filter:blur(8px)}
+  #chatLog{height:110px;overflow:auto;font-size:12px;color:#dcebf2;margin:7px 0;-webkit-user-select:text;user-select:text;word-break:break-word}
+  #chatInput{min-width:0;flex:1;padding:9px;border-radius:8px;border:1px solid #ffffff40;background:#10283a;color:#fff;font-size:16px}
+
+  /* ---------- Pantalla de inicio ---------- */
+  #start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(#071321aa,#071321ee);padding:14px;z-index:10;overflow:auto}
+  .panel{width:min(460px,100%);max-height:100%;overflow:auto;text-align:center;background:#101f2ff2;border:1px solid #ffffff2b;border-radius:22px;padding:22px;box-shadow:0 20px 80px #0009;margin:auto}
+  .panel h1{margin:0 0 8px;font-size:clamp(26px,6vw,38px)}
+  .panel p{color:#c7d6df;line-height:1.5;margin:8px 0;font-size:14px}
+  .panel input{width:100%;margin:5px 0;padding:10px;border-radius:9px;border:1px solid #ffffff45;background:#091827;color:#fff;font-size:16px}
+  .panel small{display:block;color:#b9c8d4;margin:4px 0 10px}
+  #play{border:0;border-radius:13px;padding:14px 22px;background:#8ee6a5;color:#10221a;font-weight:900;font-size:16px;width:100%}
+  .seg{display:flex;gap:6px;margin:10px 0}
+  .seg button{flex:1;border:1px solid #ffffff40;background:#ffffff10;color:#fff;border-radius:10px;padding:9px;font-weight:700;font-size:13px}
+  .seg button.sel{background:#8ee6a5;color:#10221a;border-color:#8ee6a5}
+  details{text-align:left;margin:10px 0;color:#c7d6df;font-size:13px}
+  summary{cursor:pointer;font-weight:700;padding:4px 0}
+  details .row{display:flex;gap:6px;align-items:center}
+  details .row button{border:0;border-radius:8px;padding:9px 11px;background:#355d8a;color:#fff;font-weight:700;white-space:nowrap}
+
+  /* ---------- Controles táctiles ---------- */
+  #touch{display:none;position:fixed;inset:0;z-index:3;pointer-events:none}
+  body.touch #touch{display:block}
+  body.touch .desktopOnly{display:none!important}
+  body:not(.touch) .touchOnly{display:none!important}
+  #joy{position:absolute;left:calc(18px + env(safe-area-inset-left,0px));bottom:calc(22px + env(safe-area-inset-bottom,0px));width:132px;height:132px;border-radius:50%;
+    background:#0b172999;border:2px solid #ffffff50;pointer-events:auto;touch-action:none}
+  #knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:#ffffffaa;border:2px solid #fff;pointer-events:none}
+  #cluster{position:absolute;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:196px;height:206px}
+  #cluster button{position:absolute;border:2px solid #ffffff66;background:#0b1729bb;color:#fff;border-radius:50%;font-size:11px;font-weight:800;
+    pointer-events:auto;touch-action:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:0}
+  #cluster button.on{background:#3b8267}
+  #cluster button:disabled,#cluster button.cd{opacity:.5}
+  #tFire{right:0;bottom:0;width:80px;height:80px;background:#9e3f36!important;font-size:12px!important}
+  #tJump{right:90px;bottom:8px;width:62px;height:62px}
+  #tPick{right:2px;bottom:90px;width:62px;height:62px;background:#287a55!important}
+  #tRun{right:72px;bottom:84px;width:58px;height:58px}
+  #tPow1{right:62px;bottom:150px;width:46px;height:46px;font-size:18px!important}
+  #tPow2{right:8px;bottom:158px;width:46px;height:46px;font-size:18px!important}
+
+  body.touch #topLeft{max-width:calc(100vw - 196px - 24px)}
+  body.touch #hud{padding:7px 10px;font-size:11.5px}
+  body.touch #hud b{font-size:13px}
+  body.touch #combatHud{padding:6px 10px;font-size:11.5px}
+  body.touch #networkBar{white-space:normal;font-size:11px}
+  body.touch #topRight{width:162px}
+  body.touch #progressUI{padding:7px 9px;font-size:11px}
+  body.touch #socialPanel{left:10px;right:10px;top:calc(10px + env(safe-area-inset-top,0px));bottom:auto;width:auto;z-index:9}
+  @media (max-height:480px){#minimap{display:none}}
+  @media (max-height:380px){#cluster{transform:scale(.82);transform-origin:right bottom}#joy{transform:scale(.85);transform-origin:left bottom}}
 </style>
 <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud"><b>🌿 MUNDO VIVO 3.6</b><br><span id="status">Explora libremente</span><br>WASD / flechas · Shift correr · Espacio saltar</div>
-<div id="hint">WASD / Flechas: moverte<br>Shift: correr · Espacio: saltar<br>F: disparar · E: recoger · Q: rapidez · B: escudo · K: +500 monedas · G: chat</div>
-<div id="combatHud" style="position:fixed;left:14px;bottom:14px;padding:9px 12px;background:#08131ddd;border:1px solid #ffffff30;border-radius:12px;font-size:12px;line-height:1.5;pointer-events:none">
-❤️ <span id="hp">100</span> · 🔫 <span id="weapon">Sin arma</span><br>
-🎒 <span id="ammo">0</span> balas · 🪙 <span id="lootCoins">22</span>
+<div id="hurt"></div>
+
+<div id="topLeft">
+  <div id="hud" class="box"><b>🌿 MUNDO VIVO 3.8</b><br><span id="status">Explora libremente</span></div>
+  <div id="combatHud" class="box">
+    ❤️ <span id="hp">100</span> · <span id="weapon">Sin arma</span> · 🎒 <span id="ammo">0</span>
+    <div id="hpBar"><div id="hpFill"></div></div>
+    <span id="powerState">⚡ listo · 🛡️ listo</span>
+  </div>
+  <div id="networkBar" class="box">🌐 Sala: <b id="roomLabel">---</b> · 👥 <b id="onlineCount">1</b><button id="copyRoom" class="sm">COPIAR</button></div>
 </div>
-<div id="combatButtons" style="position:fixed;right:16px;bottom:18px;display:flex;gap:8px;z-index:2">
-<button id="fireBtn" style="border:1px solid #ffffff66;border-radius:14px;padding:14px;background:#9e3f36;color:white;font-weight:900">DISPARAR</button>
-<button id="pickBtn" style="border:1px solid #ffffff66;border-radius:14px;padding:14px;background:#287a55;color:white;font-weight:900">COGER</button>
+
+<div id="topRight">
+  <div id="hint" class="box desktopOnly">WASD / flechas: moverte · Shift: correr · Espacio: saltar<br>Clic o F: disparar (apunta el ratón) · E: coger<br>Q: rapidez · B: escudo · G / Enter: chat</div>
+  <div id="progressUI" class="box">
+    <div style="display:flex;justify-content:space-between;gap:8px"><b>📜 MISIÓN</b><span id="missionCount">1 / 10000</span></div>
+    <div id="missionName" style="margin:6px 0 5px;font-weight:700">Explora el mundo</div>
+    <div style="height:7px;background:#ffffff25;border-radius:9px;overflow:hidden"><div id="missionBar" style="height:100%;width:0;background:#8ee6a5;border-radius:9px"></div></div>
+    <div id="missionProgress" style="margin-top:5px;color:#c7d6df">0 / 100</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:7px;color:#b9f6ca;flex-wrap:wrap"><span id="coins">🪙 22 monedas</span>
+      <span style="display:flex;gap:4px"><button id="openChat" class="sm" style="background:#6ca8df;color:#071522">💬<span id="chatBadge"></span></button><button id="openSkins" class="sm">SKINS</button><button id="modeBtn" class="sm" style="background:#e6d28e" title="Cambiar entre modo PC y móvil">📱</button></span></div>
+  </div>
+  <canvas id="minimap" width="224" height="224"></canvas>
 </div>
-<div id="progressUI" style="position:fixed;right:14px;top:72px;width:min(260px,45vw);padding:11px 13px;background:#08131dcc;border:1px solid #ffffff24;border-radius:14px;backdrop-filter:blur(8px);font-size:12px">
-  <div style="display:flex;justify-content:space-between;gap:8px"><b>📜 MISIÓN ACTUAL</b><span id="missionCount">1 / 10000</span></div>
-  <div id="missionName" style="margin:7px 0 5px;font-weight:700">Explora el mundo</div>
-  <div style="height:7px;background:#ffffff25;border-radius:9px;overflow:hidden"><div id="missionBar" style="height:100%;width:0;background:#8ee6a5;border-radius:9px"></div></div>
-  <div id="missionProgress" style="margin-top:5px;color:#c7d6df">0 / 100</div>
-  <div style="display:flex;justify-content:space-between;margin-top:7px;color:#b9f6ca"><span id="coins">🪙 22 monedas</span><span style="display:flex;gap:5px"><button id="openChat" style="background:#6ca8df;color:#071522;border:0;border-radius:8px;padding:5px 8px;font-weight:800">CHAT</button><button id="openSkins" style="background:#8ee6a5;color:#10221a;border:0;border-radius:8px;padding:5px 8px;font-weight:800">SKINS</button></span></div>
-</div>
-<div id="skinPanel" style="display:none;position:fixed;inset:0;background:#06111bdc;z-index:5;align-items:center;justify-content:center;padding:18px">
- <div style="width:min(420px,100%);max-height:85vh;overflow:auto;background:#132538;border:1px solid #ffffff35;border-radius:20px;padding:20px">
-  <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">✨ Armario de skins</h2><button id="closeSkins" style="border:0;border-radius:9px;padding:7px 10px">✕</button></div>
-  <p style="color:#c7d6df;font-size:13px">Completa misiones para ganar monedas y desbloquear apariencias.</p>
-  <div id="skinList" style="display:grid;grid-template-columns:1fr 1fr;gap:9px"></div>
+
+<div id="skinPanel">
+ <div id="skinBox">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">✨ Armario de skins</h2><button id="closeSkins" style="border:0;border-radius:9px;padding:8px 12px;font-size:15px">✕</button></div>
+  <p style="color:#c7d6df;font-size:13px">Completa misiones y recoge monedas para desbloquear apariencias. Tienes <b id="skinCoins">0</b> 🪙</p>
+  <div id="skinList"></div>
  </div>
 </div>
-<div id="socialPanel" style="position:fixed;left:14px;bottom:112px;width:min(330px,calc(100vw - 28px));z-index:4;background:#071522eF;border:1px solid #ffffff40;border-radius:14px;padding:10px;display:none;backdrop-filter:blur(8px)">
- <b>💬 Chat del mundo</b><div id="chatLog" style="height:105px;overflow:auto;font-size:12px;color:#dcebf2;margin:7px 0"></div>
- <div style="display:flex;gap:5px"><input id="chatInput" maxlength="100" placeholder="Escribe un mensaje..." style="min-width:0;flex:1;padding:9px;border-radius:8px;border:1px solid #ffffff40;background:#10283a;color:white"><button id="sendChat" style="border:0;border-radius:8px;padding:8px;background:#8ee6a5;font-weight:bold">Enviar</button></div>
- <div style="display:flex;gap:6px;margin-top:7px"><button id="voiceBtn" style="border:0;border-radius:8px;padding:7px;background:#355d8a;color:white">🎙️ Hablar</button><small id="voiceStatus" style="align-self:center;color:#b9f6ca">Voz del navegador (si está disponible)</small></div>
+
+<div id="socialPanel">
+ <div style="display:flex;justify-content:space-between;align-items:center"><b>💬 Chat del mundo</b><button id="closeChat" class="sm" style="background:#ffffff22;color:#fff">✕</button></div>
+ <div id="chatLog"></div>
+ <div style="display:flex;gap:5px"><input id="chatInput" maxlength="100" placeholder="Escribe un mensaje..." autocomplete="off"><button id="sendChat" class="sm" style="padding:8px 12px">Enviar</button></div>
+ <div style="display:flex;gap:6px;margin-top:7px;align-items:center;flex-wrap:wrap">
+  <button id="voiceBtn" class="sm" style="background:#355d8a;color:#fff">🎙️ Dictar</button>
+  <label style="font-size:12px;color:#b9f6ca"><input type="checkbox" id="ttsToggle"> Leer en voz alta</label>
+  <small id="voiceStatus" style="color:#b9f6ca"></small>
+ </div>
 </div>
-<div id="powerToast" style="display:none;position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:6;background:#10283a;border:1px solid #ffe36b;padding:12px 18px;border-radius:12px;font-weight:800;text-align:center"></div>
+<div id="powerToast"></div>
+
 <div id="touch">
-  <div class="pad">
-    <button class="up" data-key="ArrowUp">▲</button><button class="left" data-key="ArrowLeft">◀</button>
-    <button class="down" data-key="ArrowDown">▼</button><button class="right" data-key="ArrowRight">▶</button>
+  <div id="joy"><div id="knob"></div></div>
+  <div id="cluster">
+    <button id="tPow1">⚡</button><button id="tPow2">🛡️</button>
+    <button id="tRun">CORRER</button><button id="tJump">SALTAR</button><button id="tPick">COGER</button><button id="tFire">FUEGO</button>
   </div>
-  <div class="actions"><button data-key="Shift">CORRER</button><button data-key=" ">SALTAR</button><button id="mobileFire" style="background:#9e3f36">FUEGO</button><button id="mobilePick" style="background:#287a55">COGER</button></div>
 </div>
-<div id="networkBar">🌐 Sala: <b id="roomLabel">---</b> · 👥 <b id="onlineCount">1</b><button id="copyRoom">COPIAR CÓDIGO</button></div>
-<div id="start"><div class="panel"><h1>🌎 Mundo Vivo</h1><p>Ya estás dentro del mundo. Camina, corre y salta por un ciudad 2D con avenidas, edificios separados, árboles y NPC que buscan caminos libres.</p><p><b>🎁 Regalo de bienvenida: 22 monedas gratis.</b> Úsalas para desbloquear una skin en el armario.</p><p><b>Controles:</b> WASD o flechas, Shift correr, Espacio saltar, F disparar y E recoger. En móvil usa los botones.</p><p>🧑‍🤝‍🧑 1.000 NPC · 🗺️ mundo infinito · 🔫 armas · ❤️ combate arcade.</p><input id="playerName" maxlength="18" placeholder="Tu nombre" value="Jugador"><input id="roomCode" maxlength="10" placeholder="Código de sala (vacío = crear sala)"><small style="display:block;color:#b9c8d4;margin:4px 0 12px">Comparte el código con tu amigo para que entre a tu mundo.</small><button id="play">CREAR / ENTRAR A LA SALA</button></div></div>
+
+<div id="start"><div class="panel">
+  <h1>🌎 Mundo Vivo</h1>
+  <p>Ciudad 2D con avenidas, edificios, árboles y 1.000 NPC. Explora, completa misiones, recoge armas y juega con tus amigos.</p>
+  <p><b>🎁 Regalo de bienvenida: 22 monedas</b> para desbloquear tu primera skin.</p>
+  <div class="seg" role="group" aria-label="Modo de control"><button id="modePC">💻 Modo PC</button><button id="modeTouch">📱 Modo móvil</button></div>
+  <p id="ctrlText" style="font-size:13px"></p>
+  <input id="playerName" maxlength="18" placeholder="Tu nombre" value="Jugador" autocomplete="off">
+  <input id="roomCode" maxlength="10" placeholder="Código de sala (vacío = crear sala)" autocomplete="off" autocapitalize="characters">
+  <small>Comparte el código con tu amigo para que entre a tu mundo.</small>
+  <button id="play">CREAR / ENTRAR A LA SALA</button>
+  <details>
+    <summary>🔑 Perfil y recuperar partida</summary>
+    <small>Tu código de perfil (guárdalo para recuperar tu partida en otro dispositivo):</small>
+    <div class="row"><input id="profileCode" readonly><button id="copyProfile">Copiar</button></div>
+    <small>¿Tienes un código? Pégalo aquí:</small>
+    <div class="row"><input id="importCode" placeholder="Pega tu código" autocomplete="off"><button id="applyImport">Usar</button></div>
+    <small id="importMsg"></small>
+  </details>
+</div></div>
+
 <script>
 (()=>{
-const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
-let W=0,H=0,dpr=1,last=0,worldTime=0;
-function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
-addEventListener('resize',resize);resize();
-const keys=new Set();
-addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();keys.add(e.key===' ' ? ' ' : e.key.toLowerCase())});
-addEventListener('keyup',e=>keys.delete(e.key===' ' ? ' ' : e.key.toLowerCase()));
-document.querySelectorAll('[data-key]').forEach(b=>{
- const k=b.dataset.key===' ' ? ' ' : b.dataset.key.toLowerCase();
- b.addEventListener('pointerdown',e=>{e.preventDefault();keys.add(k);b.setPointerCapture(e.pointerId)});
- const off=()=>keys.delete(k);b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('lostpointercapture',off);
-});
-// Identificador único del perfil: permite recuperar la partida en este navegador.
-let profileId=localStorage.getItem('mundoVivoProfileId');
-if(!profileId){profileId=(crypto.randomUUID?crypto.randomUUID():('mv-'+Date.now()+'-'+Math.random().toString(36).slice(2)));localStorage.setItem('mundoVivoProfileId',profileId);}
-let saveLoaded=false,saveTimer=null;
-let started=false,jumpWasDown=false;document.getElementById('play').onclick=()=>{started=true;document.getElementById('start').style.display='none';document.getElementById('status').textContent='Conectando con el servidor...';joinOnlineRoom();};
-const player={x:0,y:0,z:0,vz:0,dir:0,walk:0,skin:0};
-const remotePlayers=new Map();let netSocket=null,netRoom='',netEmitWait=0;
-function joinOnlineRoom(){
- if(typeof io!=='function'){document.getElementById('status').textContent='No se pudo cargar el sistema online.';return;}
- netSocket=io();const name=document.getElementById('playerName').value.trim()||'Jugador';
- let room=document.getElementById('roomCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10);
- if(!room)room=Math.random().toString(36).slice(2,8).toUpperCase();netRoom=room;
- netSocket.on('connect',()=>netSocket.emit('join-room',{room:netRoom,name}));
- netSocket.on('room-joined',data=>{netRoom=data.room;remotePlayers.clear();(data.players||[]).forEach(p=>remotePlayers.set(p.id,p));document.getElementById('roomLabel').textContent=netRoom;document.getElementById('onlineCount').textContent=data.count||1;document.getElementById('networkBar').style.display='block';document.getElementById('status').textContent='🌐 Conectado a la sala '+netRoom;loadPlayerSave();});
- netSocket.on('player-joined',p=>{remotePlayers.set(p.id,p);document.getElementById('onlineCount').textContent=remotePlayers.size+1;addChat('Sistema',p.name+' se unió a la sala.');});
- netSocket.on('player-state',p=>{if(p.id!==netSocket.id)remotePlayers.set(p.id,p);});
- netSocket.on('player-left',id=>{const p=remotePlayers.get(id);remotePlayers.delete(id);document.getElementById('onlineCount').textContent=remotePlayers.size+1;if(p)addChat('Sistema',p.name+' salió de la sala.');});
- netSocket.on('player-count',n=>document.getElementById('onlineCount').textContent=n);
- netSocket.on('world-chat',m=>{if(m.name!==name)addChat(m.name,m.message);});
- netSocket.on('network-error',msg=>{document.getElementById('status').textContent=msg;});
- netSocket.on('disconnect',()=>{document.getElementById('status').textContent='Conexión perdida. Intentando reconectar...';});
+'use strict';
+/* ---------- Compatibilidad: roundRect no existe en Safari/iOS antiguos ---------- */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+ CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+  r=Array.isArray(r)?r[0]:r;r=Math.max(0,Math.min(+r||0,Math.abs(w)/2,Math.abs(h)/2));
+  this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();
+ };
 }
-document.getElementById('copyRoom').onclick=()=>{if(netRoom&&navigator.clipboard)navigator.clipboard.writeText(netRoom).then(()=>{document.getElementById('copyRoom').textContent='¡COPIADO!';});};
-const PLAYER_RADIUS=12;
+const $=id=>document.getElementById(id);
+const mem={};
+const store={
+ get(k){try{const v=localStorage.getItem(k);if(v!==null)return v}catch(_){}return k in mem?mem[k]:null},
+ set(k,v){mem[k]=v;try{localStorage.setItem(k,v)}catch(_){}}
+};
+const hudCache={};
+function setText(id,v){v=String(v);if(hudCache[id]===v)return;hudCache[id]=v;$(id).textContent=v}
+function setHTML(id,v){if(hudCache['h'+id]===v)return;hudCache['h'+id]=v;$(id).innerHTML=v}
+function copyText(text){
+ if(navigator.clipboard&&window.isSecureContext)return navigator.clipboard.writeText(text);
+ return new Promise((ok,fail)=>{const t=document.createElement('textarea');t.value=text;t.style.cssText='position:fixed;opacity:0';document.body.appendChild(t);t.select();
+  try{document.execCommand('copy')?ok():fail()}catch(e){fail(e)}t.remove()});
+}
+
+/* ---------- Canvas y modo (PC / móvil) ---------- */
+const canvas=$('game'),ctx=canvas.getContext('2d');
+let W=1,H=1,dpr=1,last=0,worldTime=0,started=false,vignette=null,viewR=700,ACTIVE_R=1750,NEAR_R=850;
+let touchMode=false,camX=0,camY=0;
+function resize(force){
+ const w=innerWidth||1,h=innerHeight||1;
+ if(!force&&w===W&&h===H)return;
+ W=w;H=h;dpr=Math.min(window.devicePixelRatio||1,touchMode?1.75:2);
+ canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);canvas.style.width=W+'px';canvas.style.height=H+'px';
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+ vignette=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.2,W/2,H/2,Math.max(W,H)*.75);
+ vignette.addColorStop(0,'#ffffff00');vignette.addColorStop(1,'#06111b30');
+ viewR=Math.hypot(W,H)/2;ACTIVE_R=Math.max(1750,viewR+700);NEAR_R=Math.max(850,viewR+120);
+}
+addEventListener('resize',()=>resize());
+addEventListener('orientationchange',()=>setTimeout(()=>resize(),250));
+if(window.visualViewport)visualViewport.addEventListener('resize',()=>resize());
+function setMode(touch,save){
+ touchMode=!!touch;document.body.classList.toggle('touch',touchMode);
+ if(save)store.set('mundoVivoMode',touchMode?'touch':'pc');
+ $('modePC').classList.toggle('sel',!touchMode);$('modeTouch').classList.toggle('sel',touchMode);
+ $('modeBtn').textContent=touchMode?'💻':'📱';
+ $('ctrlText').innerHTML=touchMode
+  ?'<b>Controles:</b> joystick a la izquierda; a la derecha CORRER, SALTAR, COGER y FUEGO (apunta solo al NPC más cercano). ⚡ rapidez · 🛡️ escudo.'
+  :'<b>Controles:</b> WASD o flechas, Shift correr, Espacio saltar, clic o F disparar (apunta con el ratón), E coger, Q rapidez, B escudo, G chat.';
+ resize(true);
+}
+{const saved=store.get('mundoVivoMode');setMode(saved?saved==='touch':matchMedia('(pointer:coarse)').matches,false);}
+$('modePC').onclick=()=>setMode(false,true);
+$('modeTouch').onclick=()=>setMode(true,true);
+$('modeBtn').onclick=()=>{setMode(!touchMode,true);showPower(touchMode?'📱 Modo móvil':'💻 Modo PC');};
+// Pantalla táctil detectada en un equipo "híbrido": cambia solo la primera vez.
+addEventListener('touchstart',()=>{if(!touchMode&&!store.get('mundoVivoMode'))setMode(true,false)},{passive:true,once:true});
+['gesturestart','gesturechange'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault()));
+document.addEventListener('contextmenu',e=>{if(e.target===canvas||touchMode)e.preventDefault()});
+// Evita que un botón con foco se active con Espacio/Enter mientras juegas.
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button');if(b)b.blur()});
+
+/* ---------- Perfil ---------- */
+const ID_RE=/^[a-zA-Z0-9_-]{8,100}$/;
+let profileId=store.get('mundoVivoProfileId');
+if(!profileId||!ID_RE.test(profileId)){
+ profileId=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('mv-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12));
+ store.set('mundoVivoProfileId',profileId);
+}
+$('profileCode').value=profileId;
+$('copyProfile').onclick=()=>copyText(profileId).then(()=>{$('copyProfile').textContent='¡Copiado!'},()=>{$('profileCode').select();$('copyProfile').textContent='Selecciona y copia'});
+$('applyImport').onclick=()=>{
+ const v=$('importCode').value.trim();
+ if(!ID_RE.test(v)){$('importMsg').textContent='❌ Código no válido.';return}
+ profileId=v;store.set('mundoVivoProfileId',v);$('profileCode').value=v;$('importMsg').textContent='✅ Código aplicado. Pulsa ENTRAR para cargar esa partida.';
+};
+
+/* ---------- Entrada: teclado, ratón, joystick ---------- */
+const keys=new Set();
+let mouseDown=false,mouseActive=false,mouseX=0,mouseY=0,touchFire=false,runToggle=false,wantJump=false;
+const typing=()=>{const a=document.activeElement;return !!a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.isContentEditable)};
+addEventListener('keydown',e=>{
+ if(typing()){if(e.key==='Escape'){const a=document.activeElement;a.blur();if(a===chatInput)toggleChat(false)}return}
+ const k=e.key.toLowerCase();
+ if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
+ keys.add(k);
+ if(!started||e.repeat||e.ctrlKey||e.metaKey||e.altKey)return;
+ if(k==='e')pickNearest();
+ else if(k==='q')activatePower('speed');
+ else if(k==='b')activatePower('shield');
+ else if(k==='k')activatePower('coins');
+ else if(k==='g')toggleChat();
+ else if(k==='c'||k==='enter'){e.preventDefault();toggleChat(true);}
+ else if(k==='escape'){toggleChat(false);$('skinPanel').style.display='none'}
+});
+addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+addEventListener('blur',()=>{keys.clear();mouseDown=false});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();mouseDown=false}});
+function key(...a){return a.some(k=>keys.has(k))}
+
+canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button===0){mouseDown=true;mouseActive=true;mouseX=e.clientX;mouseY=e.clientY}});
+canvas.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'){mouseActive=true;mouseX=e.clientX;mouseY=e.clientY}});
+addEventListener('pointerup',e=>{if(e.pointerType==='mouse')mouseDown=false});
+
+const joy={x:0,y:0,active:false,id:null},joyEl=$('joy'),knob=$('knob');
+function joyMove(e){
+ const r=joyEl.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,R=r.width/2-6;
+ let dx=e.clientX-cx,dy=e.clientY-cy;const l=Math.hypot(dx,dy);
+ if(l>R){dx=dx/l*R;dy=dy/l*R}
+ knob.style.transform='translate('+dx+'px,'+dy+'px)';
+ const nx=dx/R,ny=dy/R;if(Math.hypot(nx,ny)<.18){joy.x=joy.y=0}else{joy.x=nx;joy.y=ny}
+}
+joyEl.addEventListener('pointerdown',e=>{e.preventDefault();joy.active=true;joy.id=e.pointerId;try{joyEl.setPointerCapture(e.pointerId)}catch(_){}joyMove(e)});
+joyEl.addEventListener('pointermove',e=>{if(joy.active&&e.pointerId===joy.id)joyMove(e)});
+['pointerup','pointercancel','lostpointercapture'].forEach(ev=>joyEl.addEventListener(ev,e=>{
+ if(e.pointerId!==joy.id)return;joy.active=false;joy.id=null;joy.x=joy.y=0;knob.style.transform='';}));
+function holdBtn(el,on,off){
+ el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId)}catch(_){}el.classList.add('on');on()});
+ ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>el.addEventListener(ev,()=>{if(el.classList.contains('on')){el.classList.remove('on');if(off)off()}}));
+}
+holdBtn($('tFire'),()=>{touchFire=true;firePlayer()},()=>{touchFire=false});
+holdBtn($('tJump'),()=>{wantJump=true});
+holdBtn($('tPick'),()=>pickNearest());
+holdBtn($('tPow1'),()=>activatePower('speed'));
+holdBtn($('tPow2'),()=>activatePower('shield'));
+$('tRun').addEventListener('pointerdown',e=>{e.preventDefault();runToggle=!runToggle;$('tRun').classList.toggle('on',runToggle)});
+
+/* ---------- Mundo: edificios, estanque y chunks ---------- */
+const PLAYER_RADIUS=12,CH=1000;
 function circleHitsBuilding(x,y,b,pad=PLAYER_RADIUS){
- const left=b[0]-pad,right=b[0]+b[2]+pad,top=b[1]-pad,bottom=b[1]+b[3]+pad;
- const cx=Math.max(left,Math.min(x,right)),cy=Math.max(top,Math.min(y,bottom));
+ const cx=Math.max(b[0]-pad,Math.min(x,b[0]+b[2]+pad)),cy=Math.max(b[1]-pad,Math.min(y,b[1]+b[3]+pad));
  return (x-cx)*(x-cx)+(y-cy)*(y-cy)<pad*pad;
 }
-// Edificios fijos declarados antes de crear NPC para que las colisiones
-// nunca consulten una variable todavía sin inicializar.
+const buildings=[
+ [-690,-690,190,170,'#c98f69'],[-350,-690,210,170,'#8a9eb0'],[120,-690,210,170,'#d2b77b'],[500,-690,190,170,'#8fae9a'],
+ [-690,190,190,180,'#8f9db6'],[-350,430,210,170,'#b4a17c'],[120,430,220,170,'#829eaa'],[500,190,190,180,'#c28b83']
+];
+const pond={x:-400,y:320,rx:88,ry:42};
+const solids=[...buildings,[pond.x-pond.rx,pond.y-pond.ry,pond.rx*2,pond.ry*2]];
+function pondHit(x,y,pad=PLAYER_RADIUS){
+ if(Math.abs(x-pond.x)>pond.rx+pad||Math.abs(y-pond.y)>pond.ry+pad)return false;
+ const a=(x-pond.x)/(pond.rx+pad),b=(y-pond.y)/(pond.ry+pad);return a*a+b*b<1;
+}
 const worldChunks=new Map();
 function chunkAt(cx,cy){
- const id=cx+','+cy;
- if(worldChunks.has(id))return worldChunks.get(id);
+ const id=(cx+32768)*65536+(cy+32768);
+ let data=worldChunks.get(id);if(data)return data;
  let seed=((cx*73856093)^(cy*19349663))>>>0;
  const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
- const b=[],tr=[];
- const ox=cx*1000,oy=cy*1000;
+ const b=[],tr=[],ox=cx*CH,oy=cy*CH;
  const palette=['#c98f69','#8a9eb0','#d2b77b','#8fae9a','#c28b83'];
- // Ubicación por intentos: sin solapamientos y dejando libres las dos avenidas
- // principales (y=0 y x=0), además de un margen alrededor de cada edificio.
  for(let i=0;i<5;i++){
-  let placed=false;
-  for(let attempt=0;attempt<100&&!placed;attempt++){
-   const w=120+rnd()*85,h=110+rnd()*75;
-   const x=ox+220+rnd()*(560-w),y=oy+220+rnd()*(560-h);
-   const roadClearance=85;
-   const crossesRoad=(Math.abs(y+h/2)<roadClearance+h/2)||(Math.abs(x+w/2)<roadClearance+w/2);
-   const overlaps=b.some(q=>x<q[0]+q[2]+38&&x+w>q[0]-38&&y<q[1]+q[3]+38&&y+h>q[1]-38);
-   const overlapsFixed=buildings.some(q=>x<q[0]+q[2]+38&&x+w>q[0]-38&&y<q[1]+q[3]+38&&y+h>q[1]-38);
-   if(!crossesRoad&&!overlaps&&!overlapsFixed){b.push([x,y,w,h,palette[Math.floor(rnd()*palette.length)]]);placed=true;}
+  for(let attempt=0;attempt<100;attempt++){
+   const w=120+rnd()*85,h=110+rnd()*75,x=ox+220+rnd()*(560-w),y=oy+220+rnd()*(560-h);
+   const near=q=>x<q[0]+q[2]+38&&x+w>q[0]-38&&y<q[1]+q[3]+38&&y+h>q[1]-38;
+   if(!b.some(near)&&!solids.some(near)){b.push([x,y,w,h,palette[Math.floor(rnd()*palette.length)]]);break}
   }
  }
  for(let i=0;i<38;i++){
-  const x=ox+20+rnd()*960,y=oy+20+rnd()*960;
-  const nearBuilding=b.concat(buildings).some(q=>x>q[0]-55&&x<q[0]+q[2]+55&&y>q[1]-55&&y<q[1]+q[3]+55);
-  const nearRoad=Math.abs(x)<105||Math.abs(y)<105;
-  if(!nearBuilding&&!nearRoad)tr.push({x,y,s:.75+rnd()*.5,phase:rnd()*6});
+  const x=ox+20+rnd()*960,y=oy+20+rnd()*960,ph=rnd()*6,s=.75+rnd()*.5;
+  const nb=q=>x>q[0]-55&&x<q[0]+q[2]+55&&y>q[1]-55&&y<q[1]+q[3]+55;
+  // las avenidas están en cada múltiplo de 1000 (antes solo se evitaba la del origen)
+  const mx=((x%CH)+CH)%CH,my=((y%CH)+CH)%CH;
+  const onRoad=mx<105||mx>CH-105||my<105||my>CH-105;
+  if(!onRoad&&!b.some(nb)&&!solids.some(nb))tr.push({x,y,s,phase:ph});
  }
- const data={b,tr};worldChunks.set(id,data);return data;
+ data={b,tr};worldChunks.set(id,data);return data;
 }
+let lastCX=1e9,lastCY=1e9;
 function ensureChunks(){
- const cx=Math.floor(player.x/1000),cy=Math.floor(player.y/1000);
+ const cx=Math.floor(player.x/CH),cy=Math.floor(player.y/CH);
+ if(cx===lastCX&&cy===lastCY)return;lastCX=cx;lastCY=cy;
  for(let yy=cy-2;yy<=cy+2;yy++)for(let xx=cx-2;xx<=cx+2;xx++)chunkAt(xx,yy);
 }
-function nearbyChunkBuildings(x,y){
- const cx=Math.floor(x/1000),cy=Math.floor(y/1000),out=[];
- for(let yy=cy-1;yy<=cy+1;yy++)for(let xx=cx-1;xx<=cx+1;xx++)out.push(...chunkAt(xx,yy).b);
- return out;
+// Los edificios generados quedan a >200 px del borde de su chunk, así que basta mirar el chunk actual.
+function blockedAt(x,y){
+ if(Math.abs(x)<800&&Math.abs(y)<800){
+  for(let i=0;i<buildings.length;i++)if(circleHitsBuilding(x,y,buildings[i]))return true;
+  if(pondHit(x,y))return true;
+ }
+ const bs=chunkAt(Math.floor(x/CH),Math.floor(y/CH)).b;
+ for(let i=0;i<bs.length;i++)if(circleHitsBuilding(x,y,bs[i]))return true;
+ return false;
 }
-function blockedAt(x,y){return buildings.some(b=>circleHitsBuilding(x,y,b))||nearbyChunkBuildings(x,y).some(b=>circleHitsBuilding(x,y,b));}
 function moveEntityWithCollision(entity,dx,dy){
- // Movimiento en pasos cortos: evita atravesar esquinas y edificios a alta velocidad.
- const total=Math.hypot(dx,dy),steps=Math.max(1,Math.ceil(total/5));
- const sx=dx/steps,sy=dy/steps;
+ const total=Math.hypot(dx,dy),steps=Math.max(1,Math.ceil(total/5)),sx=dx/steps,sy=dy/steps;
  for(let i=0;i<steps;i++){
-  const nx=entity.x+sx;
-  if(!blockedAt(nx,entity.y))entity.x=nx;
-  const ny=entity.y+sy;
-  if(!blockedAt(entity.x,ny))entity.y=ny;
+  if(!blockedAt(entity.x+sx,entity.y))entity.x+=sx;
+  if(!blockedAt(entity.x,entity.y+sy))entity.y+=sy;
  }
 }
-function moveWithCollision(dx,dy){moveEntityWithCollision(player,dx,dy);}
 function findFreeSpot(x,y,spread=500){
- // Búsqueda en anillos: evita devolver coordenadas dentro de edificios.
- for(let ring=0;ring<12;ring++){
-  const count=ring===0?1:16;
-  const radius=ring===0?0:Math.min(spread,45+ring*42);
-  for(let j=0;j<count;j++){
-   const a=(j/count)*Math.PI*2+(ring%2)*.17;
-   const px=x+Math.cos(a)*radius,py=y+Math.sin(a)*radius;
+ if(!blockedAt(x,y))return {x,y};
+ for(let ring=1;ring<14;ring++){
+  const radius=Math.min(spread,45+ring*42);
+  for(let j=0;j<16;j++){
+   const a=(j/16)*Math.PI*2+(ring%2)*.17,px=x+Math.cos(a)*radius,py=y+Math.sin(a)*radius;
    if(!blockedAt(px,py))return {x:px,y:py};
   }
  }
- // La avenida central está reservada y libre de construcciones.
- for(let k=0;k<24;k++){
-  const px=(k%2?1:-1)*(125+k*13),py=(k%3-1)*34;
-  if(!blockedAt(px,py))return {x:px,y:py};
- }
- return {x:0,y:0};
+ // Las avenidas (x múltiplo de 1000) siempre están libres. Antes el respaldo era cerca del origen.
+ return {x:Math.round(x/CH)*CH,y};
 }
 function npcFreeTarget(n,range=260){
  for(let k=0;k<36;k++){
-  const a=Math.random()*Math.PI*2,r=55+Math.random()*range;
-  const x=n.x+Math.cos(a)*r,y=n.y+Math.sin(a)*r;
+  const a=Math.random()*Math.PI*2,r=55+Math.random()*range,x=n.x+Math.cos(a)*r,y=n.y+Math.sin(a)*r;
   if(!blockedAt(x,y))return {x,y};
  }
  return findFreeSpot(n.x,n.y,Math.max(500,range*2));
 }
 function setNpcTarget(n,x,y,range=260){
- if(!blockedAt(x,y)){n.tx=x;n.ty=y;return;}
- const safe=findFreeSpot(x,y,range);n.tx=safe.x;n.ty=safe.y;
+ if(!blockedAt(x,y)){n.tx=x;n.ty=y;return}
+ const s=findFreeSpot(x,y,range);n.tx=s.x;n.ty=s.y;
 }
-let lootCoins=22;
-const missionState={index:0,progress:0,coins:22,distance:0,jumps:0,seconds:0};
-function getWalletCoins(){return missionState.coins+lootCoins-22;}
-function spendWalletCoins(cost){
- if(getWalletCoins()<cost)return false;
- const fromMissions=Math.min(missionState.coins,cost);
- missionState.coins-=fromMissions;
- const remainder=cost-fromMissions;
- if(remainder>0)lootCoins-=remainder;
- return true;
+// Punto libre fuera de la pantalla alrededor del jugador (para reaparecer / reciclar NPC).
+function ringSpot(){
+ const minR=viewR+140,maxR=minR+450;
+ for(let t=0;t<10;t++){
+  const a=Math.random()*Math.PI*2,r=minR+Math.random()*(maxR-minR),x=player.x+Math.cos(a)*r,y=player.y+Math.sin(a)*r;
+  if(!blockedAt(x,y))return {x,y};
+ }
+ const a=Math.random()*Math.PI*2;return findFreeSpot(player.x+Math.cos(a)*minR,player.y+Math.sin(a)*minR,300);
 }
+
+/* ---------- Estado del jugador, cartera, misiones y skins ---------- */
+const player={x:0,y:0,z:0,vz:0,dir:0,aim:0,walk:0,skin:0};
+let wallet=22;                                   // una sola cartera (antes: coins + lootCoins - 22)
+const MAX_MISSIONS=10000;
+const missionState={index:0,progress:0,distance:0,jumps:0,seconds:0};
+const missionTemplates=[
+ {name:'Camina {n} metros',kind:'distance',unit:'m'},{name:'Corre {n} metros',kind:'run',unit:'m'},
+ {name:'Salta {n} veces',kind:'jumps',unit:'saltos'},{name:'Explora durante {n} segundos',kind:'time',unit:'s'},
+ {name:'Recorre {n} metros por el mundo',kind:'distance',unit:'m'}
+];
+function missionFor(i){
+ const t=missionTemplates[i%missionTemplates.length],level=Math.floor(i/5)+1;
+ const goal=t.kind==='time'?Math.min(20+level*2,180):t.kind==='jumps'?Math.min(3+level,35):Math.min(100+level*25,2500);
+ return {title:t.name.replace('{n}',goal),goal,kind:t.kind,unit:t.unit,reward:20+Math.min(level*2,180)};
+}
+let curMission=missionFor(0);
+const refreshMission=()=>{curMission=missionState.index<MAX_MISSIONS?missionFor(missionState.index):null};
+function renderMission(){
+ if(!curMission){setText('missionCount',MAX_MISSIONS+' / '+MAX_MISSIONS);setText('missionName','🏆 ¡Todas las misiones completadas!');setText('missionProgress','');$('missionBar').style.width='100%'}
+ else{
+  const v=Math.min(curMission.goal,Math.floor(missionState.progress));
+  setText('missionCount',(missionState.index+1)+' / '+MAX_MISSIONS);setText('missionName',curMission.title);
+  setText('missionProgress',v+' / '+curMission.goal+' '+curMission.unit);$('missionBar').style.width=(100*v/curMission.goal)+'%';
+ }
+ setText('coins','🪙 '+wallet+' monedas');
+}
+let saveDirtyHint=false;
+function addMissionProgress(kind,amount){
+ if(!curMission||curMission.kind!==kind)return;
+ missionState.progress+=amount;
+ if(missionState.progress>=curMission.goal){
+  wallet+=curMission.reward;missionState.index++;missionState.progress=0;
+  showPower('✅ ¡Misión completada! +'+curMission.reward+' 🪙');
+  refreshMission();scheduleSave();
+ }
+}
+function spendWallet(cost){if(wallet<cost)return false;wallet-=cost;return true}
 const skinOptions=[
  {name:'Aventurero',color:'#2879d0',cost:0},{name:'Rojo fuego',color:'#e34b4b',cost:100},
  {name:'Verde esmeralda',color:'#35d18a',cost:100},{name:'Violeta neón',color:'#bd65ff',cost:250},
@@ -216,352 +442,400 @@ const skinOptions=[
  {name:'Diamante',color:'#b9f7ff',cost:1000,glow:'diamond'},{name:'Plasma',color:'#a46bff',cost:1000,glow:'rainbow'}
 ];
 const ownedSkins=new Set([0]);
-const missionTemplates=[
- {name:'Camina {n} metros',goal:n=>n,kind:'distance',unit:'m'},
- {name:'Corre {n} metros',goal:n=>n,kind:'run',unit:'m'},
- {name:'Salta {n} veces',goal:n=>n,kind:'jumps',unit:'saltos'},
- {name:'Explora durante {n} segundos',goal:n=>n,kind:'time',unit:'s'},
- {name:'Recorre {n} metros por el mundo',goal:n=>n,kind:'distance',unit:'m'}
-];
-function missionFor(i){
- const t=missionTemplates[i%missionTemplates.length],level=Math.floor(i/5)+1;
- const goal=t.kind==='time'?Math.min(20+level*2,180):t.kind==='jumps'?Math.min(3+level,35):Math.min(100+level*25,2500);
- return {title:t.name.replace('{n}',goal),goal,kind:t.kind,unit:t.unit,reward:20+Math.min(level*2,180)};
-}
-function renderMission(){
- const m=missionFor(missionState.index),v=Math.min(m.goal,Math.floor(missionState.progress));
- document.getElementById('missionCount').textContent=(missionState.index+1)+' / 10000';
- document.getElementById('missionName').textContent=m.title;
- document.getElementById('missionProgress').textContent=v+' / '+m.goal+' '+m.unit;
- document.getElementById('missionBar').style.width=(100*v/m.goal)+'%';
- document.getElementById('coins').textContent='🪙 '+getWalletCoins()+' monedas';
-}
-function addMissionProgress(kind,amount){
- const m=missionFor(missionState.index);
- if(m.kind!==kind||missionState.index>=10000)return;
- missionState.progress+=amount;
- if(missionState.progress>=m.goal){
-  missionState.coins+=m.reward;missionState.index++;missionState.progress=0;
-  document.getElementById('missionName').textContent='¡Misión completada! +'+m.reward+' monedas';
- }
- renderMission();scheduleSave();
-}
-function showPower(msg){const el=document.getElementById('powerToast');el.textContent=msg;el.style.display='block';clearTimeout(showPower.timer);showPower.timer=setTimeout(()=>el.style.display='none',2300)}
-function activatePower(kind){if(kind==='speed'){speedBoost=8;showPower('⚡ RAPIDEZ EXTREMA: 8 segundos');}else if(kind==='shield'){shieldBoost=8;showPower('🛡️ ESCUDO: 8 segundos');}else if(kind==='coins'){missionState.coins+=500;renderMission();scheduleSave();showPower('🪙 CÓDIGO SECRETO: +500 monedas');}}
 function drawSkinMenu(){
- const list=document.getElementById('skinList');list.innerHTML='';
+ const list=$('skinList');list.innerHTML='';$('skinCoins').textContent=wallet;
  skinOptions.forEach((s,i)=>{
-  const owned=ownedSkins.has(i),selected=player.skin===i;
-  const b=document.createElement('button');
-  b.style.cssText='text-align:left;border:1px solid #ffffff30;border-radius:12px;padding:11px;background:#ffffff10;color:white;min-height:75px';
-  b.innerHTML='<span style="display:inline-block;width:19px;height:19px;border-radius:50%;vertical-align:middle;background:'+s.color+';border:2px solid #ffffff88;box-shadow:0 0 12px '+s.color+'"></span> <b>'+s.name+'</b><br><small>'+(selected?'EQUIPADA':owned?'Desbloqueada':'🪙 '+s.cost)+'</small>';
+  const owned=ownedSkins.has(i),selected=player.skin===i,b=document.createElement('button');
+  if(!owned&&wallet<s.cost)b.className='cant';
   if(s.glow)b.style.boxShadow='inset 0 0 18px '+s.color+'55';
+  b.innerHTML='<span style="display:inline-block;width:19px;height:19px;border-radius:50%;vertical-align:middle;background:'+s.color+';border:2px solid #ffffff88;box-shadow:0 0 12px '+s.color+'"></span> <b>'+s.name+'</b><br><small>'+(selected?'✔ EQUIPADA':owned?'Desbloqueada':'🪙 '+s.cost)+'</small>';
   b.onclick=()=>{
-   if(owned){player.skin=i;drawSkinMenu();scheduleSave();return;}
-   if(spendWalletCoins(s.cost)){
-    ownedSkins.add(i);
-    player.skin=i;
-    renderMission();
-    updateHud();
-    drawSkinMenu();
-    scheduleSave();
-    showPower('¡Skin '+s.name+' desbloqueada y equipada!');
-   }else{
-    showPower('Te faltan '+(s.cost-getWalletCoins())+' monedas para esta skin.');
-   }
+   if(owned){player.skin=i;drawSkinMenu();scheduleSave();return}
+   if(spendWallet(s.cost)){ownedSkins.add(i);player.skin=i;updateHud(true);drawSkinMenu();scheduleSave();showPower('¡Skin '+s.name+' desbloqueada y equipada!')}
+   else showPower('Te faltan '+(s.cost-wallet)+' monedas para esta skin.');
   };
   list.appendChild(b);
  });
 }
-document.getElementById('openSkins').onclick=()=>{drawSkinMenu();document.getElementById('skinPanel').style.display='flex'};
-document.getElementById('closeSkins').onclick=()=>document.getElementById('skinPanel').style.display='none';
-renderMission();
-const camera={x:0,y:0};
-const buildings=[
- // Manzanas fijas: separadas entre sí y fuera de las dos avenidas centrales.
- [-690,-690,190,170,'#c98f69'],[-350,-690,210,170,'#8a9eb0'],[120,-690,210,170,'#d2b77b'],[500,-690,190,170,'#8fae9a'],
- [-690,190,190,180,'#8f9db6'],[-350,430,210,170,'#b4a17c'],[120,430,220,170,'#829eaa'],[500,190,190,180,'#c28b83']
-];
-const trees=[];
-for(let y=-650;y<=650;y+=115)for(let x=-700;x<=700;x+=130){if(Math.abs(x)<320&&Math.abs(y)<280)continue;if((Math.sin(x*2.3+y*1.7)*1000|0)%3!==0){
- const tx=x+Math.sin(y)*24,ty=y+Math.cos(x)*20;
- const nearBuilding=buildings.some(b=>tx>b[0]-55&&tx<b[0]+b[2]+55&&ty>b[1]-55&&ty<b[1]+b[3]+55);
- const nearRoad=Math.abs(tx)<105||Math.abs(ty)<105;
- if(!nearBuilding&&!nearRoad)trees.push({x:tx,y:ty,s:.75+((Math.sin(x+y)*.5+.5)*.55),phase:Math.random()*6});
-}}
+$('openSkins').onclick=()=>{drawSkinMenu();$('skinPanel').style.display='flex'};
+$('closeSkins').onclick=()=>$('skinPanel').style.display='none';
+$('skinPanel').addEventListener('pointerdown',e=>{if(e.target===$('skinPanel'))$('skinPanel').style.display='none'});
+
+/* ---------- Mensajes ---------- */
+function showPower(msg){const el=$('powerToast');el.textContent=msg;el.style.display='block';clearTimeout(showPower.t);showPower.t=setTimeout(()=>el.style.display='none',2300)}
+let statusMsg='',statusUntil=0,netLabel='📴 Sin conexión';
+function setStatus(msg,sec=4){statusMsg=msg;statusUntil=worldTime+sec}
+
+/* ---------- NPC ---------- */
 const npcSpawned=[];
 const npcs=Array.from({length:1000},(_,i)=>{
- // Los 1.000 NPC aparecen dentro del mundo jugable, sobre suelo libre.
- // Se separan entre sí y de los edificios para evitar montones y personajes atrapados.
- const angle=i*2.399963229728653 + (Math.random()-.5)*.18;
- const radius=150+Math.sqrt(i/999)*1120;
- const wantedX=Math.cos(angle)*radius,wantedY=Math.sin(angle)*radius;
- let spot=findFreeSpot(wantedX,wantedY,360);
+ const angle=i*2.399963229728653+(Math.random()-.5)*.18,radius=150+Math.sqrt(i/999)*1120;
+ let spot=findFreeSpot(Math.cos(angle)*radius,Math.sin(angle)*radius,360);
  for(let tries=0;tries<8;tries++){
   if(!npcSpawned.some(p=>Math.hypot(p.x-spot.x,p.y-spot.y)<30))break;
-  const a=angle+Math.random()*1.2-.6,r=radius+Math.random()*100;
-  spot=findFreeSpot(Math.cos(a)*r,Math.sin(a)*r,420);
+  const a=angle+Math.random()*1.2-.6,r=radius+Math.random()*100;spot=findFreeSpot(Math.cos(a)*r,Math.sin(a)*r,420);
  }
  npcSpawned.push(spot);
- const hasWeapon=Math.random()<.22;
- const n={x:spot.x,y:spot.y,alive:true,respawn:0,hp:100,
-  weapon:hasWeapon?(Math.random()<.5?'Pistola':'Escopeta'):null,
-  ammo:hasWeapon?24:0,shootWait:Math.random()*2,
-  phase:i*1.7,speed:.25+Math.random()*.35,
-  color:['#e6b08c','#d8dce6','#c2a4df','#e8cf80'][i%4],
-  tx:spot.x,ty:spot.y,think:1+(i%4),burst:0,z:0,vz:0,dir:0,mode:'paseando',
-  updateWait:Math.random()*.08};
- const target=npcFreeTarget(n,190);n.tx=target.x;n.ty=target.y;
- return n;
+ const armed=Math.random()<.22;
+ const n={x:spot.x,y:spot.y,alive:true,respawn:0,hp:100,weapon:armed?(Math.random()<.5?'Pistola':'Escopeta'):null,ammo:armed?24:0,
+  shootWait:Math.random()*2,phase:i*1.7,color:['#e6b08c','#d8dce6','#c2a4df','#e8cf80'][i%4],
+  tx:spot.x,ty:spot.y,think:1+(i%4),burst:0,z:0,vz:0,dir:0,acc:Math.random()*.1,dp:0};
+ const t=npcFreeTarget(n,190);n.tx=t.x;n.ty=t.y;return n;
 });
-const pickups=[];
-const bullets=[];
-let playerHP=100,playerWeapon=null,playerAmmo=0,fireCooldown=0,invulnerable=0;
-let speedBoost=0,shieldBoost=0,voiceEnabled=true;
-let gameOverMessage='',lobbyX=0,lobbyY=0;
-function makePickup(x,y,type){
- pickups.push({x,y,type,life:180+Math.random()*120,phase:Math.random()*6});
+function placeNpcOffscreen(n){
+ const s=ringSpot();n.x=s.x;n.y=s.y;const d=npcFreeTarget(n,320);n.tx=d.x;n.ty=d.y;n.think=2;
 }
-function updateHud(){
- document.getElementById('hp').textContent=Math.max(0,Math.ceil(playerHP));
- document.getElementById('weapon').textContent=playerWeapon?(playerWeapon==='Pistola'?'🔫 Pistola':'💥 Escopeta'):'Sin arma';
- document.getElementById('ammo').textContent=playerAmmo;
- document.getElementById('lootCoins').textContent=lootCoins;
- document.getElementById('coins').textContent='🪙 '+getWalletCoins()+' monedas';
+function reviveNpc(n){
+ n.alive=true;n.hp=100;n.weapon=Math.random()<.28?(Math.random()<.5?'Pistola':'Escopeta'):null;n.ammo=n.weapon?24:0;placeNpcOffscreen(n);
 }
 
-function currentSaveData(){
- return {
-  version:1,
-  name:(document.getElementById('playerName').value.trim()||'Jugador').slice(0,18),
-  mission:{index:missionState.index,progress:missionState.progress,coins:missionState.coins,distance:missionState.distance,jumps:missionState.jumps,seconds:missionState.seconds},
-  lootCoins:lootCoins,
-  ownedSkins:[...ownedSkins],
-  equippedSkin:player.skin
- };
+/* ---------- Combate ---------- */
+const pickups=[],bullets=[];
+let playerHP=100,playerWeapon=null,playerAmmo=0,fireCooldown=0,invulnerable=0,hurt=0,regenWait=0;
+let speedBoost=0,shieldBoost=0,speedCd=0,shieldCd=0,voiceEnabled=false;
+function makePickup(x,y,type){pickups.push({x,y,type,life:180+Math.random()*120,phase:Math.random()*6})}
+function activatePower(kind){
+ if(!started)return;
+ if(kind==='speed'){
+  if(speedCd>0)return showPower('⚡ Rapidez lista en '+Math.ceil(speedCd)+' s');
+  speedBoost=8;speedCd=20;showPower('⚡ RAPIDEZ EXTREMA: 8 segundos');
+ }else if(kind==='shield'){
+  if(shieldCd>0)return showPower('🛡️ Escudo listo en '+Math.ceil(shieldCd)+' s');
+  shieldBoost=8;shieldCd=25;showPower('🛡️ ESCUDO: 8 segundos');
+ }else if(kind==='coins'){wallet+=500;updateHud(true);scheduleSave();showPower('🪙 CÓDIGO SECRETO: +500 monedas')}
 }
-function applySaveData(data){
- if(!data||typeof data!=='object')return;
- const m=data.mission||{};
- missionState.index=Math.max(0,Math.min(10000,Number(m.index)||0));
- missionState.progress=Math.max(0,Number(m.progress)||0);
- missionState.coins=Math.max(0,Number(m.coins)||0);
- missionState.distance=Math.max(0,Number(m.distance)||0);
- missionState.jumps=Math.max(0,Number(m.jumps)||0);
- missionState.seconds=Math.max(0,Number(m.seconds)||0);
- lootCoins=Math.max(0,Number(data.lootCoins)||0);
- ownedSkins.clear();ownedSkins.add(0);
- if(Array.isArray(data.ownedSkins))data.ownedSkins.forEach(i=>{i=Number(i);if(Number.isInteger(i)&&i>=0&&i<skinOptions.length)ownedSkins.add(i);});
- const equipped=Number(data.equippedSkin);
- player.skin=ownedSkins.has(equipped)?equipped:0;
- if(data.name)document.getElementById('playerName').value=String(data.name).slice(0,18);
- renderMission();updateHud();drawSkinMenu();
-}
-async function loadPlayerSave(){
- if(saveLoaded)return;
- try{
-  const response=await fetch('/api/save/'+encodeURIComponent(profileId));
-  if(!response.ok)throw new Error('No se pudo leer la partida');
-  const result=await response.json();
-  if(result&&result.save){applySaveData(result.save);document.getElementById('status').textContent='🌐 Partida recuperada · Sala '+netRoom;}
-  else{saveLoaded=true;savePlayerNow();document.getElementById('status').textContent='🌐 Nueva partida · Sala '+netRoom;return;}
-  saveLoaded=true;
- }catch(error){
-  // Respaldo local si el servidor aún no está publicado o no responde.
-  try{const local=JSON.parse(localStorage.getItem('mundoVivoLocalSave')||'null');if(local)applySaveData(local);}catch(_){}
-  saveLoaded=true;
-  document.getElementById('status').textContent='Partida local cargada · revisa la conexión del servidor';
- }
-}
-async function savePlayerNow(){
- if(!saveLoaded)return;
- const data=currentSaveData();
- try{localStorage.setItem('mundoVivoLocalSave',JSON.stringify(data));}catch(_){}
- try{
-  await fetch('/api/save/'+encodeURIComponent(profileId),{
-   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),keepalive:true
-  });
- }catch(_){}
-}
-function scheduleSave(){
- if(!saveLoaded)return;
- clearTimeout(saveTimer);saveTimer=setTimeout(savePlayerNow,1200);
-}
-setInterval(savePlayerNow,10000);
-window.addEventListener('pagehide',savePlayerNow);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')savePlayerNow();});
-function respawnPlayer(){
- player.x=lobbyX;player.y=lobbyY;player.z=0;player.vz=0;playerHP=100;playerWeapon=null;playerAmmo=0;invulnerable=3;
- document.getElementById('status').textContent='💫 ¡Volviste al lobby! Te has recuperado.';
- updateHud();
+function aimAngle(){
+ if(!touchMode&&mouseActive){const p=project(player.x,player.y);return Math.atan2(mouseY-(p.y-20),mouseX-p.x)}
+ let best=null,bd=520;
+ for(const n of npcs){if(!n.alive)continue;const d=Math.hypot(n.x-player.x,n.y-player.y);if(d<bd){bd=d;best=n}}
+ return best?Math.atan2(best.y-22-(player.y-20),best.x-player.x):player.dir;
 }
 function firePlayer(){
- if(!started||!playerWeapon||playerAmmo<=0||fireCooldown>0)return;
+ if(!started||!playerWeapon||fireCooldown>0)return;
+ if(playerAmmo<=0){fireCooldown=.6;showPower('🎒 Sin balas');return}
  playerAmmo--;fireCooldown=playerWeapon==='Escopeta'?.85:.32;
- const spread=playerWeapon==='Escopeta'?[-.22,-.11,0,.11,.22]:[0];
- spread.forEach(a=>{const ang=player.dir+a;bullets.push({x:player.x,y:player.y-20,vx:Math.cos(ang)*620,vy:Math.sin(ang)*620,owner:'player',life:1.15,damage:playerWeapon==='Escopeta'?42:34})});
- updateHud();
+ const ang=aimAngle();player.aim=ang;
+ (playerWeapon==='Escopeta'?[-.22,-.11,0,.11,.22]:[0]).forEach(a=>bullets.push({x:player.x,y:player.y-20,vx:Math.cos(ang+a)*620,vy:Math.sin(ang+a)*620,owner:'player',life:1.15,damage:playerWeapon==='Escopeta'?42:34}));
+ if(netSocket&&netSocket.connected&&netJoined)netSocket.volatile.emit('player-shoot',{x:Math.round(player.x),y:Math.round(player.y-20),a:+ang.toFixed(3)});
+ updateHud(true);
 }
 function pickNearest(){
  let best=null,bd=75;
  for(const q of pickups){const d=Math.hypot(q.x-player.x,q.y-player.y);if(d<bd){best=q;bd=d}}
  if(!best)return;
- if(best.type==='Monedas'){lootCoins+=10}
+ if(best.type==='Monedas')wallet+=10;
  else if(best.type==='Pistola'){playerWeapon='Pistola';playerAmmo+=36}
- else if(best.type==='Escopeta'){playerWeapon='Escopeta';playerAmmo+=18}
- pickups.splice(pickups.indexOf(best),1);updateHud();
- document.getElementById('status').textContent='¡Recogiste '+best.type+'!';
+ else{playerWeapon='Escopeta';playerAmmo+=18}
+ pickups.splice(pickups.indexOf(best),1);updateHud(true);setStatus('¡Recogiste '+best.type+'!',2);
 }
-document.getElementById('fireBtn').onclick=firePlayer;
-document.getElementById('pickBtn').onclick=pickNearest;
-const mf=document.getElementById('mobileFire'),mp=document.getElementById('mobilePick');if(mf)mf.onclick=firePlayer;if(mp)mp.onclick=pickNearest;
-addEventListener('keydown',e=>{if(e.key.toLowerCase()==='f')firePlayer();if(e.key.toLowerCase()==='e')pickNearest()});
-function key(...a){return a.some(k=>keys.has(k))}
+function respawnPlayer(){
+ player.x=0;player.y=0;player.z=0;player.vz=0;camera.x=0;camera.y=0;playerHP=100;playerWeapon=null;playerAmmo=0;invulnerable=3;
+ setStatus('💫 ¡Volviste al lobby! Te has recuperado.',4);updateHud(true);
+}
+function updateHud(force){
+ setText('hp',Math.max(0,Math.ceil(playerHP)));
+ $('hpFill').style.width=Math.max(0,playerHP)+'%';$('hpFill').style.background=playerHP>55?'#65df83':playerHP>25?'#f0c24b':'#ee5b4b';
+ setText('weapon',playerWeapon?(playerWeapon==='Pistola'?'🔫 Pistola':'💥 Escopeta'):'Sin arma');
+ setText('ammo',playerAmmo);
+ const sp=speedBoost>0?'activo '+Math.ceil(speedBoost)+'s':speedCd>0?Math.ceil(speedCd)+'s':'listo';
+ const sh=shieldBoost>0?'activo '+Math.ceil(shieldBoost)+'s':shieldCd>0?Math.ceil(shieldCd)+'s':'listo';
+ setText('powerState','⚡ '+sp+' · 🛡️ '+sh);
+ $('tPow1').classList.toggle('cd',speedCd>0);$('tPow2').classList.toggle('cd',shieldCd>0);
+ setText('tPow1',speedCd>0?Math.ceil(speedCd):'⚡');setText('tPow2',shieldCd>0?Math.ceil(shieldCd):'🛡️');
+ renderMission();
+}
+
+/* ---------- Guardado ---------- */
+let saveLoaded=false,saveTimer=null,saveOnline=null,lastSaveSig='';
+function currentSaveData(){
+ return {version:2,name:($('playerName').value.trim()||'Jugador').slice(0,18),wallet:Math.floor(wallet),
+  mission:{index:missionState.index,progress:missionState.progress,distance:missionState.distance,jumps:missionState.jumps,seconds:missionState.seconds},
+  ownedSkins:[...ownedSkins],equippedSkin:player.skin,ts:Date.now()};
+}
+function applySaveData(data){
+ if(!data||typeof data!=='object')return;
+ const m=data.mission||{},nz=v=>Math.max(0,Number(v)||0);
+ missionState.index=Math.min(MAX_MISSIONS,Math.floor(nz(m.index)));
+ missionState.progress=nz(m.progress);missionState.distance=nz(m.distance);missionState.jumps=nz(m.jumps);missionState.seconds=nz(m.seconds);
+ wallet=data.wallet!==undefined?Math.floor(nz(data.wallet)):Math.max(0,Math.floor(nz(m.coins)+nz(data.lootCoins)-22)); // v1 → v2
+ ownedSkins.clear();ownedSkins.add(0);
+ if(Array.isArray(data.ownedSkins))data.ownedSkins.forEach(i=>{i=Number(i);if(Number.isInteger(i)&&i>=0&&i<skinOptions.length)ownedSkins.add(i)});
+ const eq=Number(data.equippedSkin);player.skin=ownedSkins.has(eq)?eq:0;
+ refreshMission();updateHud(true);drawSkinMenu();
+}
+async function loadPlayerSave(){
+ if(saveLoaded)return;
+ let server=null,serverOk=false,local=null;
+ try{
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),7000);
+  const r=await fetch('/api/save/'+encodeURIComponent(profileId),{signal:ctl.signal,cache:'no-store'});clearTimeout(t);
+  if(!r.ok)throw new Error('http '+r.status);
+  const j=await r.json();server=j&&j.save||null;serverOk=true;
+ }catch(_){}
+ try{const l=JSON.parse(store.get('mundoVivoLocalSave')||'null');if(l&&l.pid===profileId)local=l}catch(_){}
+ const sT=server?Date.parse(server.updatedAt)||0:0,lT=local&&local.ts||0;
+ const chosen=server&&(!local||sT>=lT)?server:local;   // gana la copia más reciente
+ if(chosen){applySaveData(chosen);setStatus(serverOk?'💾 Partida recuperada':'💾 Partida local cargada (sin servidor)',4)}
+ else setStatus('✨ Nueva partida',4);
+ saveOnline=serverOk;saveLoaded=true;savePlayerNow(true);
+}
+async function savePlayerNow(force){
+ if(!saveLoaded)return;
+ const data=currentSaveData(),sig=JSON.stringify({...data,ts:0});
+ if(!force&&sig===lastSaveSig)return;
+ lastSaveSig=sig;
+ try{store.set('mundoVivoLocalSave',JSON.stringify({...data,pid:profileId}))}catch(_){}
+ try{
+  const r=await fetch('/api/save/'+encodeURIComponent(profileId),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),keepalive:true});
+  if(!r.ok)throw new Error('http '+r.status);
+  saveOnline=true;
+ }catch(_){
+  lastSaveSig='';
+  if(saveOnline!==false){saveOnline=false;setStatus('⚠️ Sin servidor: la partida se guarda solo en este dispositivo',6)}
+ }
+}
+function scheduleSave(){if(!saveLoaded)return;clearTimeout(saveTimer);saveTimer=setTimeout(()=>savePlayerNow(),1200)}
+setInterval(()=>savePlayerNow(),10000);
+addEventListener('pagehide',()=>savePlayerNow());
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')savePlayerNow()});
+
+/* ---------- Multijugador ---------- */
+const remotePlayers=new Map();
+let netSocket=null,netRoom='',netJoined=false,netEmitWait=0,lastNetSig='',netIdle=0;
+function addRemote(p){remotePlayers.set(p.id,{...p,rx:p.x,ry:p.y,rz:p.z||0})}
+function updateOnline(){setText('onlineCount',remotePlayers.size+1)}
+function joinOnlineRoom(){
+ if(typeof io!=='function'){netLabel='📴 Modo sin conexión';setStatus('No se pudo cargar el sistema online: juegas en solitario.',6);return}
+ const name=($('playerName').value.trim()||'Jugador').slice(0,18);
+ let room=$('roomCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10);
+ if(!room)room=Math.random().toString(36).slice(2,8).toUpperCase();
+ netRoom=room;netLabel='⏳ Conectando…';
+ netSocket=io({reconnectionDelayMax:5000,timeout:8000});
+ netSocket.on('connect',()=>netSocket.emit('join-room',{room:netRoom,name}));
+ netSocket.on('room-joined',d=>{
+  netRoom=d.room;netJoined=true;remotePlayers.clear();(d.players||[]).forEach(addRemote);updateOnline();
+  $('roomLabel').textContent=netRoom;$('networkBar').style.display='block';netLabel='🌐 Sala '+netRoom;setStatus('🌐 Conectado a la sala '+netRoom,4);
+ });
+ netSocket.on('player-joined',p=>{addRemote(p);updateOnline();addChat('Sistema',p.name+' se unió a la sala.')});
+ netSocket.on('player-state',p=>{const o=remotePlayers.get(p.id);if(o){const {rx,ry,rz}=o;Object.assign(o,p);o.rx=rx;o.ry=ry;o.rz=rz}else addRemote(p)});
+ netSocket.on('player-left',id=>{const p=remotePlayers.get(id);remotePlayers.delete(id);updateOnline();if(p)addChat('Sistema',p.name+' salió de la sala.')});
+ netSocket.on('player-count',n=>setText('onlineCount',n));
+ netSocket.on('player-shoot',s=>{const p=remotePlayers.get(s.id);if(p&&bullets.length<260)bullets.push({x:s.x,y:s.y,vx:Math.cos(s.a)*620,vy:Math.sin(s.a)*620,owner:'remote',life:1.0,damage:0})});
+ netSocket.on('world-chat',m=>{addChat(m.name,m.message);if(!chatOpen)$('chatBadge').textContent=' •'});
+ netSocket.on('network-error',msg=>{setStatus('⚠️ '+msg,6)});
+ netSocket.on('connect_error',()=>{netJoined=false;netLabel='📴 Sin conexión (reintentando…)'});
+ netSocket.on('disconnect',()=>{netJoined=false;netLabel='📴 Reconectando…';setStatus('Conexión perdida. Intentando reconectar…',5)});
+}
+$('copyRoom').onclick=()=>{if(!netRoom)return;copyText(netRoom).then(()=>{$('copyRoom').textContent='¡LISTO!';setTimeout(()=>$('copyRoom').textContent='COPIAR',1500)},()=>{})};
+
+/* ---------- Chat y voz ---------- */
+const social=$('socialPanel'),chatLog=$('chatLog'),chatInput=$('chatInput');
+function addChat(who,msg){
+ const line=document.createElement('div');line.textContent=who+': '+msg;chatLog.appendChild(line);
+ while(chatLog.children.length>60)chatLog.firstChild.remove();chatLog.scrollTop=chatLog.scrollHeight;
+}
+let chatOpen=false;
+function toggleChat(force){
+ const open=force===undefined?!chatOpen:!!force;chatOpen=open;
+ social.style.display=open?'block':'none';
+ if(open){$('chatBadge').textContent='';if(force===true||!touchMode)setTimeout(()=>chatInput.focus(),0)}else chatInput.blur();
+}
+function sendChat(){
+ const msg=chatInput.value.trim();if(!msg)return;
+ addChat('Tú',msg);chatInput.value='';
+ if(netSocket&&netSocket.connected&&netJoined)netSocket.emit('world-chat',msg);
+ else{const replies=['¡Vamos a explorar!','He visto monedas por allí.','¡Cuidado con los NPC armados!','Prueba Q para correr más.','¡Buena aventura!'];setTimeout(()=>addChat('NPC',replies[Math.floor(Math.random()*replies.length)]),450)}
+ if(voiceEnabled&&'speechSynthesis'in window){speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(msg))}
+}
+$('openChat').onclick=()=>toggleChat();
+$('closeChat').onclick=()=>toggleChat(false);
+$('sendChat').onclick=sendChat;
+chatInput.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat()}});
+$('ttsToggle').onchange=e=>{voiceEnabled=e.target.checked};
+$('voiceBtn').onclick=()=>{
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition,vs=$('voiceStatus');
+ if(!SR){vs.textContent='Tu navegador no admite dictado por voz';return}
+ try{
+  const rec=new SR();rec.lang='es-PE';rec.onstart=()=>vs.textContent='Escuchando...';
+  rec.onresult=e=>{chatInput.value=e.results[0][0].transcript;sendChat()};
+  rec.onerror=()=>vs.textContent='No se pudo activar el micrófono';rec.onend=()=>{if(vs.textContent==='Escuchando...')vs.textContent=''};rec.start();
+ }catch(_){vs.textContent='No se pudo iniciar el dictado'}
+};
+addChat('Sistema','Chat listo. Cuando estés en una sala, tus mensajes llegarán a los demás jugadores.');
+
+/* ---------- Inicio ---------- */
+function startGame(){
+ if(started)return;
+ started=true;$('start').style.display='none';
+ try{if(touchMode){const el=document.documentElement,rf=el.requestFullscreen||el.webkitRequestFullscreen;if(rf){const p=rf.call(el);if(p&&p.catch)p.catch(()=>{})}}}catch(_){}
+ setStatus('Conectando…',3);
+ loadPlayerSave();joinOnlineRoom();
+}
+$('play').onclick=startGame;
+['playerName','roomCode'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')startGame()}));
+
+/* ---------- Actualización ---------- */
+const camera={x:0,y:0};
+let hudTimer=0,mmTimer=0;
 function update(dt){
- worldTime+=dt;speedBoost=Math.max(0,speedBoost-dt);shieldBoost=Math.max(0,shieldBoost-dt);
- let dx=(key('d','arrowright')?1:0)-(key('a','arrowleft')?1:0);
- let dy=(key('s','arrowdown')?1:0)-(key('w','arrowup')?1:0);
- const len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;
- const moving=!!(dx||dy),run=key('shift');
- const speed=(run?300:175)*(speedBoost>0?2.25:1);
- const moved=speed*dt*(moving?1:0);
- moveWithCollision(dx*speed*dt,dy*speed*dt);
- if(moving){missionState.distance+=moved;addMissionProgress(run?'run':'distance',moved);if(missionState.index<10000&&missionFor(missionState.index).kind==='distance'){} }
- if(moving){player.dir=Math.atan2(dy,dx);player.walk+=dt*(run?13:8)}
- const jumpDown=key(' ');if(jumpDown&&!jumpWasDown&&player.z===0){player.vz=470;missionState.jumps++;addMissionProgress('jumps',1)}jumpWasDown=jumpDown;
+ worldTime+=dt;
+ speedBoost=Math.max(0,speedBoost-dt);shieldBoost=Math.max(0,shieldBoost-dt);speedCd=Math.max(0,speedCd-dt);shieldCd=Math.max(0,shieldCd-dt);
+ fireCooldown=Math.max(0,fireCooldown-dt);invulnerable=Math.max(0,invulnerable-dt);hurt=Math.max(0,hurt-dt*2.2);regenWait=Math.max(0,regenWait-dt);
+ // --- movimiento (teclado o joystick) ---
+ let dx=0,dy=0,mag=0;
+ if(joy.active&&(joy.x||joy.y)){const l=Math.hypot(joy.x,joy.y);mag=Math.min(1,l);dx=joy.x/l;dy=joy.y/l}
+ else{dx=(key('d','arrowright')?1:0)-(key('a','arrowleft')?1:0);dy=(key('s','arrowdown')?1:0)-(key('w','arrowup')?1:0);const l=Math.hypot(dx,dy);if(l){dx/=l;dy/=l;mag=1}}
+ const moving=mag>0,run=key('shift')||runToggle;
+ const speed=(run?300:175)*(speedBoost>0?2.25:1)*(joy.active?.35+.65*mag:1);
+ const ox=player.x,oy=player.y;
+ if(moving){moveEntityWithCollision(player,dx*speed*dt,dy*speed*dt);player.dir=Math.atan2(dy,dx);player.walk+=dt*(run?13:8)}
+ const moved=Math.hypot(player.x-ox,player.y-oy);   // distancia real (si choca con un edificio no cuenta)
+ if(moved>0){missionState.distance+=moved;addMissionProgress('distance',moved);if(run)addMissionProgress('run',moved)}
+ missionState.seconds+=dt;addMissionProgress('time',dt);   // antes las misiones de tiempo nunca avanzaban
+ const jumpDown=key(' ');
+ if(((jumpDown&&!update.jumpWas)||wantJump)&&player.z===0){player.vz=470;missionState.jumps++;addMissionProgress('jumps',1)}
+ update.jumpWas=jumpDown;wantJump=false;
  player.vz-=1150*dt;player.z=Math.max(0,player.z+player.vz*dt);if(player.z===0)player.vz=0;
  ensureChunks();
- camera.x+=(player.x-camera.x)*Math.min(1,dt*5);camera.y+=(player.y-camera.y)*Math.min(1,dt*5);
- netEmitWait-=dt;if(netSocket&&netSocket.connected&&netEmitWait<=0){netEmitWait=.06;netSocket.volatile.emit('player-state',{x:player.x,y:player.y,z:player.z,dir:player.dir,walk:player.walk});}
- npcs.forEach((n,i)=>{
-  if(!n.alive){n.respawn-=dt;if(n.respawn<=0){n.alive=true;n.hp=100;n.weapon=Math.random()<.28?(Math.random()<.5?'Pistola':'Escopeta'):null;n.ammo=n.weapon?24:0;const spawn=findFreeSpot(player.x,player.y,1100);n.x=spawn.x;n.y=spawn.y;const dest=npcFreeTarget(n,320);n.tx=dest.x;n.ty=dest.y;n.think=2;}return;}
-  const npcDistance=Math.hypot(n.x-player.x,n.y-player.y);
-  if(npcDistance>1750)return;
-  // Los NPC algo alejados actualizan su IA en intervalos breves para mejorar FPS.
-  n.updateWait=(n.updateWait||0)-dt;
-  if(npcDistance>850&&n.updateWait>0)return;
-  if(npcDistance>850)n.updateWait=.10+(i%5)*.025;
-  if(blockedAt(n.x,n.y)){const safe=findFreeSpot(n.x,n.y,900);n.x=safe.x;n.y=safe.y;n.tx=safe.x;n.ty=safe.y;n.think=0;}
-  n.think-=dt;
+ const ck=Math.min(1,dt*6);camera.x+=(player.x-camera.x)*ck;camera.y+=(player.y-camera.y)*ck;
+ // --- red ---
+ netEmitWait-=dt;netIdle+=dt;
+ if(netSocket&&netSocket.connected&&netJoined&&netEmitWait<=0){
+  const s={x:Math.round(player.x),y:Math.round(player.y),z:Math.round(player.z),dir:+player.dir.toFixed(2),walk:+player.walk.toFixed(1),skin:player.skin};
+  const sig=s.x+','+s.y+','+s.z+','+s.skin;
+  if(sig!==lastNetSig||netIdle>1.2){lastNetSig=sig;netIdle=0;netSocket.volatile.emit('player-state',s)}
+  netEmitWait=.06;
+ }
+ for(const p of remotePlayers.values()){
+  if(Math.hypot(p.x-p.rx,p.y-p.ry)>400){p.rx=p.x;p.ry=p.y}
+  const k=Math.min(1,dt*12);p.rx+=(p.x-p.rx)*k;p.ry+=(p.y-p.ry)*k;p.rz+=((p.z||0)-p.rz)*k;
+ }
+ // --- disparo (mantener pulsado) ---
+ if(playerWeapon)player.aim=aimAngle();
+ if(key('f')||mouseDown||touchFire)firePlayer();
+ // --- NPC ---
+ for(let i=0;i<npcs.length;i++){
+  const n=npcs[i];
+  if(!n.alive){n.respawn-=dt;if(n.respawn<=0)reviveNpc(n);continue}
+  const dp=Math.hypot(n.x-player.x,n.y-player.y);n.dp=dp;
+  if(dp>ACTIVE_R+550){placeNpcOffscreen(n);continue}       // el mundo es infinito: los NPC siguen al jugador
+  if(dp>ACTIVE_R)continue;
+  n.acc+=dt;
+  if(dp>NEAR_R&&n.acc<.1+(i%5)*.025)continue;                // NPC lejanos piensan menos veces...
+  const sdt=Math.min(n.acc,.25);n.acc=0;                     // ...pero avanzan el tiempo acumulado (antes iban más lentos)
+  if(blockedAt(n.x,n.y)){const s=findFreeSpot(n.x,n.y,900);n.x=s.x;n.y=s.y;n.tx=s.x;n.ty=s.y;n.think=0}
+  n.think-=sdt;
   const toX=n.tx-n.x,toY=n.ty-n.y,dist=Math.hypot(toX,toY);
-  // Eligen destinos nuevos, alternan paseo y carreras cortas.
   if(n.think<=0||dist<18){
-   const target=npcFreeTarget(n,300);
-   n.tx=target.x;n.ty=target.y;
-   n.think=2.5+Math.random()*5;
+   const t=npcFreeTarget(n,300);n.tx=t.x;n.ty=t.y;n.think=2.5+Math.random()*5;
    if(Math.random()<.12)n.burst=.7+Math.random()*1.1;
    if(Math.random()<.035&&n.z===0)n.vz=280;
   }
-  // A veces se acercan al jugador, como otros jugadores del mundo.
-  if(i%4===0&&Math.random()<.0005){
-   setNpcTarget(n,player.x+(Math.random()-.5)*180,player.y+(Math.random()-.5)*180,360);
+  if(i%4===0&&Math.random()<.03*sdt)setNpcTarget(n,player.x+(Math.random()-.5)*180,player.y+(Math.random()-.5)*180,360);
+  const nrun=n.burst>0;
+  if(dist>5){
+   const vx=toX/dist,vy=toY/dist,sp=nrun?112:52,ox2=n.x,oy2=n.y;
+   n.dir=Math.atan2(vy,vx);moveEntityWithCollision(n,vx*sp*sdt,vy*sp*sdt);
+   if(n.x===ox2&&n.y===oy2){const t=npcFreeTarget(n,280);n.tx=t.x;n.ty=t.y;n.think=.7}
+   n.phase+=sdt*(nrun?8:4);
   }
-  const moving=dist>5,run=n.burst>0;
-  const speed=run?112:52;
-  if(moving){
-   const vx=toX/(dist||1),vy=toY/(dist||1);
-   n.dir=Math.atan2(vy,vx);
-   const oldX=n.x,oldY=n.y;
-   moveEntityWithCollision(n,vx*speed*dt,vy*speed*dt);
-   if(n.x===oldX&&n.y===oldY){const target=npcFreeTarget(n,280);n.tx=target.x;n.ty=target.y;n.think=.7;}
-   n.phase+=dt*(run?8:4);
-  }
-  if(n.burst>0)n.burst-=dt;
-  n.vz-=1050*dt;n.z=Math.max(0,n.z+n.vz*dt);if(n.z===0)n.vz=0;
- });
- // Spawn pickups around the player as the endless world is explored.
- if(pickups.length<45&&Math.random()<dt*.9){
-  const a=Math.random()*Math.PI*2,r=180+Math.random()*850;
-  const spot=findFreeSpot(player.x+Math.cos(a)*r,player.y+Math.sin(a)*r,90);makePickup(spot.x,spot.y,['Monedas','Pistola','Escopeta'][Math.floor(Math.random()*3)]);
- }
- pickups.forEach(q=>q.life-=dt);
- for(let i=pickups.length-1;i>=0;i--)if(pickups[i].life<=0)pickups.splice(i,1);
- // NPCs can collect nearby gear, then use it in arcade-style combat.
- for(const n of npcs){
-  if(!n.alive)continue;
-  for(let j=pickups.length-1;j>=0;j--){
-   const q=pickups[j];if(Math.hypot(q.x-n.x,q.y-n.y)<24){
-    if(q.type==='Monedas')n.hasCoins=true;else if(!n.weapon){n.weapon=q.type;n.ammo=q.type==='Pistola'?30:14;}
-    pickups.splice(j,1);break;
-   }
-  }
-  n.shootWait-=dt;
-  const d=Math.hypot(player.x-n.x,player.y-n.y);
-  if(n.weapon&&n.ammo>0&&d<390&&n.shootWait<=0&&bullets.length<180){
+  if(n.burst>0)n.burst-=sdt;
+  n.vz-=1050*sdt;n.z=Math.max(0,n.z+n.vz*sdt);if(n.z===0)n.vz=0;
+  if(dp>NEAR_R)continue;
+  // combate solo para NPC cercanos
+  if(!n.weapon){for(let j=pickups.length-1;j>=0;j--){const q=pickups[j];if(q.type!=='Monedas'&&Math.hypot(q.x-n.x,q.y-n.y)<24){n.weapon=q.type;n.ammo=q.type==='Pistola'?30:14;pickups.splice(j,1);break}}}
+  n.shootWait-=sdt;
+  if(n.weapon&&n.ammo>0&&dp<390&&n.shootWait<=0&&bullets.length<180){
    const ang=Math.atan2(player.y-n.y,player.x-n.x);
    bullets.push({x:n.x,y:n.y-22,vx:Math.cos(ang)*390,vy:Math.sin(ang)*390,owner:'npc',life:1.7,damage:n.weapon==='Escopeta'?9:5});
-   n.ammo--;n.shootWait=n.weapon==='Escopeta'?6.5:4.8;
-   setNpcTarget(n,player.x+(Math.random()-.5)*100,player.y+(Math.random()-.5)*100,360);n.burst=.45;
-  }else if(d<300&&!n.weapon&&Math.random()<dt*.12){setNpcTarget(n,player.x+(Math.random()-.5)*90,player.y+(Math.random()-.5)*90,360);n.burst=1;}
+   n.ammo--;n.shootWait=n.weapon==='Escopeta'?6.5:4.8;setNpcTarget(n,player.x+(Math.random()-.5)*100,player.y+(Math.random()-.5)*100,360);n.burst=.45;
+  }else if(dp<300&&!n.weapon&&Math.random()<sdt*.12){setNpcTarget(n,player.x+(Math.random()-.5)*90,player.y+(Math.random()-.5)*90,360);n.burst=1}
  }
- fireCooldown=Math.max(0,fireCooldown-dt);invulnerable=Math.max(0,invulnerable-dt);
+ // --- objetos del suelo ---
+ for(let i=pickups.length-1;i>=0;i--){
+  const q=pickups[i];q.life-=dt;const d=Math.hypot(q.x-player.x,q.y-player.y);
+  if(q.life<=0||d>1700){pickups.splice(i,1);continue}
+  if(q.type==='Monedas'&&d<34){wallet+=10;pickups.splice(i,1);setStatus('+10 🪙',1.2)}   // las monedas se recogen solas
+ }
+ if(pickups.length<45&&Math.random()<dt*.9){
+  const a=Math.random()*Math.PI*2,r=180+Math.random()*850,s=findFreeSpot(player.x+Math.cos(a)*r,player.y+Math.sin(a)*r,90);
+  makePickup(s.x,s.y,['Monedas','Pistola','Escopeta'][Math.floor(Math.random()*3)]);
+ }
+ if(Math.random()<dt*.025){const s=findFreeSpot(player.x+(Math.random()-.5)*500,player.y+(Math.random()-.5)*500,120);makePickup(s.x,s.y,'Monedas')}
+ // --- balas ---
  for(let i=bullets.length-1;i>=0;i--){
   const b=bullets[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
-  if(b.life<=0||blockedAt(b.x,b.y)){bullets.splice(i,1);continue;}
+  if(b.life<=0||blockedAt(b.x,b.y)){bullets.splice(i,1);continue}
   if(b.owner==='player'){
-   let hit=null;for(const n of npcs){if(n.alive&&Math.hypot(n.x-b.x,n.y-22-b.y)<19){hit=n;break}}
-   if(hit){hit.hp-=b.damage;bullets.splice(i,1);if(hit.hp<=0){hit.alive=false;hit.respawn=60;makePickup(hit.x,hit.y,'Monedas');if(hit.weapon)makePickup(hit.x+18,hit.y,hit.weapon);document.getElementById('status').textContent='NPC eliminado · reaparece en 60 segundos';}}
-  }else if(invulnerable<=0&&shieldBoost<=0&&Math.hypot(player.x-b.x,player.y-20-b.y)<18){
-   playerHP-=b.damage;bullets.splice(i,1);
+   let hit=null;for(const n of npcs){if(n.alive&&Math.abs(n.x-b.x)<22&&Math.hypot(n.x-b.x,n.y-22-b.y)<19){hit=n;break}}
+   if(hit){
+    hit.hp-=b.damage;bullets.splice(i,1);
+    if(hit.hp<=0){hit.alive=false;hit.respawn=60;makePickup(hit.x,hit.y,'Monedas');if(hit.weapon)makePickup(hit.x+18,hit.y,hit.weapon);setStatus('NPC eliminado · reaparece en 60 segundos',3)}
+   }
+  }else if(b.owner==='npc'&&invulnerable<=0&&shieldBoost<=0&&Math.hypot(player.x-b.x,player.y-20-b.y)<18){
+   playerHP-=b.damage;hurt=1;regenWait=6;bullets.splice(i,1);
    if(playerHP<=0)respawnPlayer();
   }
  }
- // Keep the player and NPC population inside an endless, procedurally extended map.
- if(Math.random()<dt*.025){const spot=findFreeSpot(player.x+(Math.random()-.5)*500,player.y+(Math.random()-.5)*500,120);makePickup(spot.x,spot.y,'Monedas');}
- updateHud();
- document.getElementById('status').textContent=moving?(run?'Corriendo por el mundo':'Caminando y explorando'):'Explorando el mundo infinito';
+ if(regenWait<=0&&playerHP<100)playerHP=Math.min(100,playerHP+4*dt);     // regeneración lenta fuera de combate
+ // --- interfaz (limitada: antes se tocaba el DOM en cada fotograma) ---
+ hudTimer-=dt;if(hudTimer<=0){hudTimer=.2;updateHud()}
+ mmTimer-=dt;if(mmTimer<=0){mmTimer=.1;drawMinimap()}
+ $('hurt').style.opacity=hurt>0?(hurt*.7).toFixed(2):'0';
+ setText('status',worldTime<statusUntil?statusMsg:((moving?(run?'Corriendo':'Caminando'):'Explorando')+' · '+netLabel));
 }
-function project(x,y){return {x:W/2+(x-camera.x),y:H/2+(y-camera.y)}}
+
+/* ---------- Dibujo ---------- */
+function project(x,y){return {x:W/2+(x-camX),y:H/2+(y-camY)}}
 function rounded(x,y,w,h,r,c){ctx.fillStyle=c;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
 function drawGround(){
  ctx.fillStyle='#719d68';ctx.fillRect(0,0,W,H);
- // subtle grass
- for(let y=-40;y<H+40;y+=42)for(let x=-40;x<W+40;x+=47){let wx=x+camera.x%47,wy=y+camera.y%42;ctx.strokeStyle='#ffffff0b';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+5+(Math.sin(wx*wy)*3),y-5);ctx.stroke()}
- // Avenidas repetidas en cada sector del mundo infinito.
- const left=camera.x-W/2-100,right=camera.x+W/2+100,top=camera.y-H/2-100,bottom=camera.y+H/2+100;
- const roadXs=[],roadYs=[];
- for(let wx=Math.floor(left/1000)*1000;wx<=right;wx+=1000)roadXs.push(project(wx,0).x);
- for(let wy=Math.floor(top/1000)*1000;wy<=bottom;wy+=1000)roadYs.push(project(0,wy).y);
- ctx.fillStyle='#657078';
- roadYs.forEach(y=>ctx.fillRect(0,y-57,W,114));
- roadXs.forEach(x=>ctx.fillRect(x-57,0,114,H));
- ctx.strokeStyle='#e8dca5';ctx.lineWidth=3;ctx.setLineDash([22,20]);ctx.beginPath();
- roadYs.forEach(y=>{ctx.moveTo(0,y);ctx.lineTo(W,y)});roadXs.forEach(x=>{ctx.moveTo(x,0);ctx.lineTo(x,H)});ctx.stroke();ctx.setLineDash([]);
- // park paths
- ctx.strokeStyle='#c7b995';ctx.lineWidth=24;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(project(-700,-300).x,project(-700,-300).y);ctx.quadraticCurveTo(W*.35,H*.25,project(700,430).x,project(700,430).y);ctx.stroke();
+ // hierba anclada al mundo (antes quedaba fija en pantalla y no parecía moverse)
+ const sx=touchMode?63:47,sy=touchMode?56:42;
+ ctx.strokeStyle='#ffffff10';ctx.lineWidth=1;ctx.beginPath();
+ for(let gy=Math.floor((camY-H/2)/sy)-1;gy<=Math.ceil((camY+H/2)/sy)+1;gy++)for(let gx=Math.floor((camX-W/2)/sx)-1;gx<=Math.ceil((camX+W/2)/sx)+1;gx++){
+  const j=Math.sin(gx*12.9898+gy*78.233)*43758.5453,f=j-Math.floor(j),p=project(gx*sx+f*sx,gy*sy+((f*7)%1)*sy);
+  ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+4+f*3,p.y-5);
+ }
+ ctx.stroke();
+ // camino del parque (ahora anclado al mundo)
+ const a=project(-700,-300),c=project(-100,-520),e=project(700,430);
+ ctx.strokeStyle='#c7b995';ctx.lineWidth=24;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.quadraticCurveTo(c.x,c.y,e.x,e.y);ctx.stroke();
+ // avenidas en cada múltiplo de 1000
+ const left=camX-W/2-100,right=camX+W/2+100,top=camY-H/2-100,bottom=camY+H/2+100,rx=[],ry=[];
+ for(let wx=Math.floor(left/CH)*CH;wx<=right;wx+=CH)rx.push(project(wx,0).x);
+ for(let wy=Math.floor(top/CH)*CH;wy<=bottom;wy+=CH)ry.push(project(0,wy).y);
+ ctx.fillStyle='#657078';ry.forEach(y=>ctx.fillRect(0,y-57,W,114));rx.forEach(x=>ctx.fillRect(x-57,0,114,H));
+ ctx.strokeStyle='#e8dca5';ctx.lineWidth=3;ctx.lineCap='butt';ctx.setLineDash([22,20]);
+ ctx.lineDashOffset=-(((-camX)%42)+42)%42;ctx.beginPath();ry.forEach(y=>{ctx.moveTo(0,y);ctx.lineTo(W,y)});ctx.stroke();
+ ctx.lineDashOffset=-(((-camY)%42)+42)%42;ctx.beginPath();rx.forEach(x=>{ctx.moveTo(x,0);ctx.lineTo(x,H)});ctx.stroke();
+ ctx.setLineDash([]);ctx.lineDashOffset=0;
+}
+function drawPond(){
+ const p=project(pond.x,pond.y);if(p.x<-150||p.x>W+150||p.y<-100||p.y>H+100)return;
+ ctx.fillStyle='#d9cf9f';ctx.beginPath();ctx.ellipse(p.x,p.y,pond.rx+7,pond.ry+6,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#5babb0';ctx.beginPath();ctx.ellipse(p.x,p.y,pond.rx,pond.ry,0,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='#ffffff66';ctx.lineWidth=2;
+ for(let k=0;k<2;k++){const r=((worldTime*.25+k*.5)%1);ctx.globalAlpha=1-r;ctx.beginPath();ctx.ellipse(p.x,p.y,pond.rx*.3+r*pond.rx*.6,pond.ry*.3+r*pond.ry*.6,0,0,Math.PI*2);ctx.stroke()}
+ ctx.globalAlpha=1;
 }
 function drawBuilding(b){
- const p=project(b[0],b[1]),w=b[2],h=b[3];
- // Edificio 2D sólido: la fachada, el lateral y el techo quedan dentro
- // de la misma huella usada por las colisiones.
- const side=Math.min(16,Math.max(9,w*.07));
- ctx.fillStyle='#00000038';
- ctx.beginPath();ctx.roundRect(p.x+5,p.y+7,w-2,h-2,5);ctx.fill();
+ const p=project(b[0],b[1]),w=b[2],h=b[3],side=Math.min(16,Math.max(9,w*.07));
+ ctx.fillStyle='#00000038';ctx.beginPath();ctx.roundRect(p.x+5,p.y+7,w-2,h-2,5);ctx.fill();
  ctx.fillStyle='#718087';ctx.fillRect(p.x,p.y,w,h);
- ctx.fillStyle='#263b48';
- ctx.beginPath();ctx.moveTo(p.x+side,p.y+side);ctx.lineTo(p.x+w-side,p.y+side);
- ctx.lineTo(p.x+w-side,p.y+h-side);ctx.lineTo(p.x+side,p.y+h-side);ctx.closePath();ctx.fill();
- ctx.fillStyle=b[4];
- ctx.fillRect(p.x+side,p.y+side,w-side*2,h-side*2);
- // Borde superior y franja de profundidad.
+ ctx.fillStyle='#263b48';ctx.fillRect(p.x+side,p.y+side,w-side*2,h-side*2);
+ ctx.fillStyle=b[4];ctx.fillRect(p.x+side,p.y+side,w-side*2,h-side*2);
  ctx.fillStyle='#ffffff45';ctx.fillRect(p.x+side,p.y+side,w-side*2,8);
  ctx.fillStyle='#00000020';ctx.fillRect(p.x+side,p.y+h-side-10,w-side*2,10);
- // Ventanas alineadas y siempre dentro de la fachada.
- const cols=Math.max(2,Math.floor((w-48)/42)),rows=Math.max(2,Math.floor((h-58)/42));
- const innerW=w-side*2-22,innerH=h-side*2-42;
+ const cols=Math.max(2,Math.floor((w-48)/42)),rows=Math.max(2,Math.floor((h-58)/42)),innerW=w-side*2-22,innerH=h-side*2-42;
  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
   const xx=p.x+side+11+c*(innerW/cols),yy=p.y+side+20+r*(innerH/rows);
-  ctx.fillStyle='#233b4b';ctx.fillRect(xx,yy,20,23);
-  ctx.fillStyle='#bde5ed';ctx.fillRect(xx+2,yy+2,16,19);
-  ctx.fillStyle='#ffffff75';ctx.fillRect(xx+3,yy+3,3,16);
-  ctx.fillStyle='#527a87';ctx.fillRect(xx+10,yy+2,1,19);
+  ctx.fillStyle='#233b4b';ctx.fillRect(xx,yy,20,23);ctx.fillStyle='#bde5ed';ctx.fillRect(xx+2,yy+2,16,19);
+  ctx.fillStyle='#ffffff75';ctx.fillRect(xx+3,yy+3,3,16);ctx.fillStyle='#527a87';ctx.fillRect(xx+10,yy+2,1,19);
  }
- // Puerta centrada.
  const doorW=Math.min(30,w*.18),doorH=Math.min(37,h*.24);
  ctx.fillStyle='#34434b';ctx.fillRect(p.x+w/2-doorW/2,p.y+h-side-doorH,doorW,doorH);
- ctx.fillStyle='#d9bd82';ctx.beginPath();
- ctx.arc(p.x+w/2+doorW*.28,p.y+h-side-doorH/2,2,0,Math.PI*2);ctx.fill();
- // Rótulo discreto que ayuda a distinguir el frente del edificio.
+ ctx.fillStyle='#d9bd82';ctx.beginPath();ctx.arc(p.x+w/2+doorW*.28,p.y+h-side-doorH/2,2,0,Math.PI*2);ctx.fill();
  ctx.fillStyle='#ffffff35';ctx.fillRect(p.x+w*.22,p.y+side+5,w*.56,3);
 }
 function drawTree(t){
@@ -571,65 +845,118 @@ function drawTree(t){
  ctx.fillStyle='#2e6945';ctx.beginPath();ctx.arc(p.x+wind,p.y-34*s,23*s,0,Math.PI*2);ctx.fill();
  ctx.fillStyle='#438d56';ctx.beginPath();ctx.arc(p.x-9*s+wind,p.y-44*s,15*s,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(p.x+11*s+wind,p.y-39*s,14*s,0,Math.PI*2);ctx.fill();
 }
-function drawPerson(x,y,color,phase,scale=1,isPlayer=false,z=0,dir=0){
+function drawLabel(text,x,y,color){
+ ctx.font='bold 11px system-ui,sans-serif';ctx.textAlign='center';const w=ctx.measureText(text).width+10;
+ ctx.fillStyle='#071522aa';ctx.beginPath();ctx.roundRect(x-w/2,y-11,w,15,6);ctx.fill();ctx.fillStyle=color||'#fff';ctx.fillText(text,x,y);
+}
+function drawPerson(x,y,color,phase,scale,z,dir,skin,gunAngle,gunType){
  const p=project(x,y),bob=Math.abs(Math.sin(phase))*3*scale;
- ctx.fillStyle='#00000030';ctx.beginPath();ctx.ellipse(p.x,p.y+8,13*scale,6*scale,0,0,Math.PI*2);ctx.fill();
- ctx.save();ctx.translate(p.x,p.y-z-bob);ctx.rotate(dir*.10);
+ ctx.fillStyle='#00000030';ctx.beginPath();ctx.ellipse(p.x,p.y+8,13*scale*(1-Math.min(z,120)/400),6*scale,0,0,Math.PI*2);ctx.fill();
+ ctx.save();ctx.translate(p.x,p.y-z-bob);ctx.rotate(Math.cos(dir)*.07);
  const step=Math.sin(phase)*5*scale;
  ctx.strokeStyle='#263746';ctx.lineWidth=5*scale;ctx.lineCap='round';
  ctx.beginPath();ctx.moveTo(-4*scale,-4*scale);ctx.lineTo(-5*scale+step,-16*scale);ctx.moveTo(4*scale,-4*scale);ctx.lineTo(5*scale-step,-16*scale);ctx.stroke();
- const skin=isPlayer?skinOptions[player.skin]:null;
- if(isPlayer&&skin&&skin.glow){ctx.save();ctx.shadowBlur=20;ctx.shadowColor=skin.glow==='rainbow'?`hsl(${(worldTime*180)%360},100%,60%)`:skin.color;}
- rounded(-9*scale,-37*scale,18*scale,25*scale,6*scale,isPlayer?skinOptions[player.skin].color:color);
- if(isPlayer&&skin&&skin.glow){ctx.restore();if(skin.glow==='rainbow'){ctx.strokeStyle=`hsl(${(worldTime*180)%360},100%,65%)`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-25*scale,15*scale,0,Math.PI*2);ctx.stroke();}else if(skin.glow==='gold'||skin.glow==='diamond'){ctx.strokeStyle=skin.color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-25*scale,15*scale,0,Math.PI*2);ctx.stroke();}}
+ const glow=skin&&skin.glow;
+ if(glow){ctx.save();ctx.shadowBlur=20;ctx.shadowColor=glow==='rainbow'?'hsl('+((worldTime*180)%360)+',100%,60%)':skin.color}
+ rounded(-9*scale,-37*scale,18*scale,25*scale,6*scale,color);
+ if(glow){
+  ctx.restore();
+  if(glow==='rainbow'){ctx.strokeStyle='hsl('+((worldTime*180)%360)+',100%,65%)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-25*scale,15*scale,0,Math.PI*2);ctx.stroke()}
+  else if(glow==='gold'||glow==='diamond'){ctx.strokeStyle=skin.color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-25*scale,15*scale,0,Math.PI*2);ctx.stroke()}
+ }
  ctx.strokeStyle='#e8c1a0';ctx.lineWidth=4*scale;ctx.beginPath();ctx.moveTo(-8*scale,-31*scale);ctx.lineTo(-12*scale+step*.5,-18*scale);ctx.moveTo(8*scale,-31*scale);ctx.lineTo(12*scale-step*.5,-18*scale);ctx.stroke();
  ctx.fillStyle='#eac09c';ctx.beginPath();ctx.arc(0,-44*scale,9*scale,0,Math.PI*2);ctx.fill();
  ctx.fillStyle='#4b342c';ctx.beginPath();ctx.arc(0,-48*scale,9*scale,Math.PI,Math.PI*2);ctx.fill();
- if(isPlayer){ctx.fillStyle='#fff';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText('TÚ',0,-59*scale)}
  ctx.restore();
+ if(gunType){   // arma apuntando hacia donde disparas
+  const gx=p.x,gy=p.y-z-bob-27*scale,len=gunType==='Escopeta'?24:16;
+  ctx.strokeStyle='#1c242b';ctx.lineWidth=gunType==='Escopeta'?5:4;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+Math.cos(gunAngle)*len,gy+Math.sin(gunAngle)*len);ctx.stroke();
+ }
 }
+function drawPickup(q){
+ const p=project(q.x,q.y),bob=Math.sin(worldTime*4+q.phase)*3;
+ if(q.life<8&&Math.floor(worldTime*6)%2)return;   // parpadea antes de desaparecer
+ ctx.fillStyle='#00000030';ctx.beginPath();ctx.ellipse(p.x,p.y,9,4,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=q.type==='Monedas'?'#f5d34e':q.type==='Pistola'?'#9fb8cf':'#e0a15f';
+ ctx.beginPath();ctx.arc(p.x,p.y-12+bob,10,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ffffff99';ctx.lineWidth=2;ctx.stroke();
+ ctx.fillStyle='#17212a';ctx.font='bold 10px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText(q.type==='Monedas'?'$':q.type==='Pistola'?'P':'E',p.x,p.y-8.5+bob);
+ if(q.type!=='Monedas'&&Math.hypot(q.x-player.x,q.y-player.y)<75)drawLabel((touchMode?'COGER ':'[E] ')+q.type,p.x,p.y-30+bob,'#ffe28a');
+}
+const drawList=[];
 function render(){
- ctx.clearRect(0,0,W,H);drawGround();
- // distant decorative water pond
- const pond=project(-430,400);ctx.fillStyle='#5babb0';ctx.beginPath();ctx.ellipse(pond.x,pond.y,120,55,-.25,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ffffff55';ctx.lineWidth=3;ctx.stroke();
- ensureChunks();
- const minX=camera.x-W/2-300,maxX=camera.x+W/2+300,minY=camera.y-H/2-300,maxY=camera.y+H/2+300;
- const cx0=Math.floor(minX/1000),cx1=Math.floor(maxX/1000),cy0=Math.floor(minY/1000),cy1=Math.floor(maxY/1000);
- const procB=[],procT=[];
- for(let cy=cy0;cy<=cy1;cy++)for(let cx=cx0;cx<=cx1;cx++){const ch=chunkAt(cx,cy);procB.push(...ch.b);procT.push(...ch.tr);}
- const things=[
-  ...buildings.filter(b=>b[0]+b[2]>minX&&b[0]<maxX&&b[1]+b[3]>minY&&b[1]<maxY).map(b=>({y:b[1]+b[3],x:b[0],fn:()=>drawBuilding(b)})),
-  ...procB.map(b=>({y:b[1]+b[3],x:b[0],fn:()=>drawBuilding(b)})),
-  ...trees.filter(t=>t.x>minX&&t.x<maxX&&t.y>minY&&t.y<maxY).map(t=>({y:t.y,x:t.x,fn:()=>drawTree(t)})),
-  ...procT.map(t=>({y:t.y,x:t.x,fn:()=>drawTree(t)})),
-  ...npcs.filter(n=>n.alive&&n.x>minX&&n.x<maxX&&n.y>minY&&n.y<maxY).map(n=>({y:n.y,x:n.x,fn:()=>{
-   drawPerson(n.x,n.y,n.color,n.phase,.85,false,n.z,n.dir);
-   const q=project(n.x,n.y);
-   ctx.fillStyle='#071522cc';ctx.fillRect(q.x-13,q.y-67-n.z,26,4);
-   ctx.fillStyle='#65df83';ctx.fillRect(q.x-13,q.y-67-n.z,26*Math.max(0,n.hp/100),4);
-   if(n.weapon){ctx.fillStyle='#ffe28a';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText('🔫',q.x,q.y-72-n.z);}
-  }})),
-  ...pickups.map(q=>({y:q.y,x:q.x,fn:()=>{const p=project(q.x,q.y);ctx.fillStyle=q.type==='Monedas'?'#f5d34e':q.type==='Pistola'?'#9fb8cf':'#c6c6c6';ctx.beginPath();ctx.arc(p.x,p.y-10+Math.sin(worldTime*4+q.phase)*3,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#17212a';ctx.font='bold 9px system-ui';ctx.textAlign='center';ctx.fillText(q.type==='Monedas'?'$':q.type==='Pistola'?'🔫':'E',p.x,p.y-7)}})),
-  ...[...remotePlayers.values()].filter(p=>p.x>minX&&p.x<maxX&&p.y>minY&&p.y<maxY).map(p=>({y:p.y,x:p.x,fn:()=>{drawPerson(p.x,p.y,p.color||'#2879d0',p.walk||0,.98,false,p.z||0,p.dir||0);const q=project(p.x,p.y);ctx.fillStyle='#ffffff';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText(p.name||'Jugador',q.x,q.y-63-(p.z||0));}})),
-  {y:player.y,x:player.x,fn:()=>drawPerson(player.x,player.y,'#2879d0',player.walk,1.08,true,player.z,player.dir)}
- ];
- things.sort((a,b)=>a.y-b.y||a.x-b.x).forEach(o=>o.fn());
- for(const b of bullets){const p=project(b.x,b.y);ctx.fillStyle=b.owner==='player'?'#ffe36b':'#ff6b55';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();}
- // soft daylight vignette
- const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.2,W/2,H/2,Math.max(W,H)*.75);g.addColorStop(0,'#ffffff00');g.addColorStop(1,'#06111b30');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ camX=Math.round(camera.x*dpr)/dpr;camY=Math.round(camera.y*dpr)/dpr;
+ ctx.clearRect(0,0,W,H);drawGround();drawPond();
+ const minX=camX-W/2-300,maxX=camX+W/2+300,minY=camY-H/2-300,maxY=camY+H/2+300;
+ drawList.length=0;
+ for(const b of buildings)if(b[0]+b[2]>minX&&b[0]<maxX&&b[1]+b[3]>minY&&b[1]<maxY)drawList.push({y:b[1]+b[3],x:b[0],t:0,o:b});
+ for(let cy=Math.floor(minY/CH);cy<=Math.floor(maxY/CH);cy++)for(let cx=Math.floor(minX/CH);cx<=Math.floor(maxX/CH);cx++){
+  const ch=chunkAt(cx,cy);
+  for(const b of ch.b)if(b[0]+b[2]>minX&&b[0]<maxX&&b[1]+b[3]>minY&&b[1]<maxY)drawList.push({y:b[1]+b[3],x:b[0],t:0,o:b});
+  for(const t of ch.tr)if(t.x>minX&&t.x<maxX&&t.y>minY&&t.y<maxY)drawList.push({y:t.y,x:t.x,t:1,o:t});
+ }
+ for(const n of npcs)if(n.alive&&n.x>minX&&n.x<maxX&&n.y>minY&&n.y<maxY)drawList.push({y:n.y,x:n.x,t:2,o:n});
+ for(const q of pickups)if(q.x>minX&&q.x<maxX&&q.y>minY&&q.y<maxY)drawList.push({y:q.y,x:q.x,t:3,o:q});
+ for(const p of remotePlayers.values())if(p.rx>minX&&p.rx<maxX&&p.ry>minY&&p.ry<maxY)drawList.push({y:p.ry,x:p.rx,t:4,o:p});
+ drawList.push({y:player.y,x:player.x,t:5,o:player});
+ drawList.sort((a,b)=>a.y-b.y||a.x-b.x);
+ for(const d of drawList){
+  const o=d.o;
+  switch(d.t){
+   case 0:drawBuilding(o);break;
+   case 1:drawTree(o);break;
+   case 2:{
+    drawPerson(o.x,o.y,o.color,o.phase,.85,o.z,o.dir,null);
+    if(o.hp<100){const q=project(o.x,o.y);ctx.fillStyle='#071522cc';ctx.fillRect(q.x-13,q.y-67-o.z,26,4);ctx.fillStyle='#65df83';ctx.fillRect(q.x-13,q.y-67-o.z,26*Math.max(0,o.hp/100),4)}
+    if(o.weapon){const q=project(o.x,o.y);ctx.font='10px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText('🔫',q.x,q.y-72-o.z)}
+    break}
+   case 3:drawPickup(o);break;
+   case 4:{
+    const sk=skinOptions[o.skin]||skinOptions[0];
+    drawPerson(o.rx,o.ry,sk.color,o.walk||0,.98,o.rz,o.dir||0,sk);
+    const q=project(o.rx,o.ry);drawLabel(o.name||'Jugador',q.x,q.y-63-o.rz,'#9fe3ff');break}
+   case 5:{
+    const sk=skinOptions[player.skin];
+    drawPerson(player.x,player.y,sk.color,player.walk,1.08,player.z,player.dir,sk,player.aim,playerWeapon);
+    const q=project(player.x,player.y);drawLabel('TÚ',q.x,q.y-63*1.08-player.z,'#b9f6ca');break}
+  }
+ }
+ for(const b of bullets){
+  const p=project(b.x,b.y);
+  ctx.strokeStyle=b.owner==='npc'?'#ff6b55':'#ffe36b';ctx.lineWidth=3;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(p.x-b.vx*.018,p.y-b.vy*.018);ctx.lineTo(p.x,p.y);ctx.stroke();
+ }
+ ctx.fillStyle=vignette;ctx.fillRect(0,0,W,H);
+}
+/* ---------- Minimapa ---------- */
+const mm=$('minimap'),mctx=mm.getContext('2d');
+function drawMinimap(){
+ if(!started||getComputedStyle(mm).display==='none')return;
+ const S=112,R=700,k=(S/2)/R;
+ mctx.setTransform(2,0,0,2,0,0);mctx.clearRect(0,0,S,S);
+ mctx.save();mctx.beginPath();mctx.arc(S/2,S/2,S/2-1,0,Math.PI*2);mctx.clip();
+ mctx.fillStyle='#4f7a50';mctx.fillRect(0,0,S,S);
+ const mx=x=>S/2+(x-player.x)*k,my=y=>S/2+(y-player.y)*k;
+ mctx.fillStyle='#59646b';   // avenidas
+ for(let wx=Math.floor((player.x-R)/CH)*CH;wx<=player.x+R;wx+=CH)mctx.fillRect(mx(wx)-3,0,6,S);
+ for(let wy=Math.floor((player.y-R)/CH)*CH;wy<=player.y+R;wy+=CH)mctx.fillRect(0,my(wy)-3,S,6);
+ mctx.fillStyle='#b8c2c8';
+ for(const b of buildings)mctx.fillRect(mx(b[0]),my(b[1]),b[2]*k,b[3]*k);
+ for(let cy=Math.floor((player.y-R)/CH);cy<=Math.floor((player.y+R)/CH);cy++)for(let cx=Math.floor((player.x-R)/CH);cx<=Math.floor((player.x+R)/CH);cx++)
+  for(const b of chunkAt(cx,cy).b)mctx.fillRect(mx(b[0]),my(b[1]),b[2]*k,b[3]*k);
+ mctx.fillStyle='#5babb0';mctx.beginPath();mctx.ellipse(mx(pond.x),my(pond.y),pond.rx*k,pond.ry*k,0,0,Math.PI*2);mctx.fill();
+ for(const n of npcs){if(!n.alive||n.dp>R)continue;mctx.fillStyle=n.weapon?'#ff7b6b':'#ffffffaa';mctx.fillRect(mx(n.x)-1,my(n.y)-1,2,2)}
+ for(const q of pickups){if(Math.abs(q.x-player.x)>R||Math.abs(q.y-player.y)>R)continue;mctx.fillStyle=q.type==='Monedas'?'#ffd54a':'#ffffff';mctx.fillRect(mx(q.x)-1.5,my(q.y)-1.5,3,3)}
+ for(const p of remotePlayers.values()){mctx.fillStyle='#6cf';mctx.beginPath();mctx.arc(Math.max(4,Math.min(S-4,mx(p.rx))),Math.max(4,Math.min(S-4,my(p.ry))),3,0,Math.PI*2);mctx.fill()}
+ mctx.restore();
+ mctx.fillStyle='#8ee6a5';mctx.beginPath();mctx.arc(S/2,S/2,3.5,0,Math.PI*2);mctx.fill();mctx.strokeStyle='#fff';mctx.lineWidth=1;mctx.stroke();
 }
 
-// Chat local con NPC y voz del navegador. No es multijugador por internet.
-const social=document.getElementById('socialPanel'),chatLog=document.getElementById('chatLog'),chatInput=document.getElementById('chatInput');
-function addChat(who,msg){const line=document.createElement('div');line.textContent=who+': '+msg;chatLog.appendChild(line);chatLog.scrollTop=chatLog.scrollHeight;}
-function sendChat(){const msg=chatInput.value.trim();if(!msg)return;addChat('Tú',msg);chatInput.value='';if(netSocket&&netSocket.connected)netSocket.emit('world-chat',msg);if(voiceEnabled&&'speechSynthesis'in window){speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(msg));}if(!netSocket||!netSocket.connected){const replies=['¡Vamos a explorar!','He visto monedas por allí.','¡Cuidado con los NPC armados!','Prueba la tecla Q para correr más.','¡Buena aventura!'];setTimeout(()=>addChat('NPC',replies[Math.floor(Math.random()*replies.length)]),450);}}
-document.getElementById('openChat').onclick=()=>{social.style.display=social.style.display==='none'?'block':'none';};
-document.getElementById('sendChat').onclick=sendChat;chatInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
-document.getElementById('voiceBtn').onclick=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){document.getElementById('voiceStatus').textContent='Tu navegador no admite dictado por voz';return;}const rec=new SR();rec.lang='es-PE';rec.onstart=()=>document.getElementById('voiceStatus').textContent='Escuchando...';rec.onresult=e=>{chatInput.value=e.results[0][0].transcript;sendChat();};rec.onerror=()=>document.getElementById('voiceStatus').textContent='No se pudo activar el micrófono';rec.onend=()=>document.getElementById('voiceStatus').textContent='Dictado finalizado';rec.start();};
-addChat('Sistema','Chat listo. Cuando estés en una sala, tus mensajes llegarán a los demás jugadores.');
-addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key.toLowerCase();if(k==='g'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){social.style.display=social.style.display==='none'?'block':'none';}if(k==='q')activatePower('speed');if(k==='b')activatePower('shield');if(k==='k')activatePower('coins');if(k==='c'){social.style.display='block';chatInput.focus();}});
-
-function frame(t){const dt=Math.min((t-last)/1000||0,.04);last=t;if(started)update(dt);else worldTime+=dt;render();requestAnimationFrame(frame)}
+function frame(t){
+ const dt=Math.min((t-last)/1000||0,.05);last=t;
+ try{if(started)update(dt);else worldTime+=dt;render()}catch(err){console.error(err)}
+ requestAnimationFrame(frame);
+}
+refreshMission();renderMission();updateHud(true);
 requestAnimationFrame(frame);
 })();
 </script>
