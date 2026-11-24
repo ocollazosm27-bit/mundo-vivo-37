@@ -54,3 +54,7 @@ Mejoras
 
 NOTA: la tecla K (+500 monedas) sigue siendo el "código secreto" del juego original.
 Para quitarla, borra la línea  else if(k==='k')activatePower('coins');  en index.html.
+
+ARMAS CON IMAGEN (3.8+)
+- La pistola y la escopeta usan imágenes recortadas, incrustadas dentro de index.html (base64),
+  así que no hace falta subir archivos extra. Se ven en el suelo, en la mano del jugador y de los NPC.
