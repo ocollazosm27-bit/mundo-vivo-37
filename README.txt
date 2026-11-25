@@ -61,4 +61,4 @@ ARMAS CON IMAGEN (3.8+)
 
 ELEGIR GÉNERO (hombre / mujer)
 - En la pantalla de inicio eliges "Hombre" o "Mujer". Se recuerda en el dispositivo y se guarda en la partida.
-- Los demás jugadores ven tu personaje según lo que elegiste; los NPC son mitad hombres, mitad mujeres.
+- Los demás jugadores ven tu personaje según lo que elegiste; los NPC mas hombres,que mujeres.
