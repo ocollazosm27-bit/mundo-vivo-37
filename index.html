@@ -156,6 +156,8 @@
   <p>Ciudad 2D con avenidas, edificios, árboles y 1.000 NPC. Explora, completa misiones, recoge armas y juega con tus amigos.</p>
   <p><b>🎁 Regalo de bienvenida: 22 monedas</b> para desbloquear tu primera skin.</p>
   <div class="seg" role="group" aria-label="Modo de control"><button id="modePC">💻 Modo PC</button><button id="modeTouch">📱 Modo móvil</button></div>
+  <small>Elige tu personaje:</small>
+  <div class="seg" role="group" aria-label="Personaje"><button id="genM">👨 Hombre</button><button id="genF">👩 Mujer</button></div>
   <p id="ctrlText" style="font-size:13px"></p>
   <input id="playerName" maxlength="18" placeholder="Tu nombre" value="Jugador" autocomplete="off">
   <input id="roomCode" maxlength="10" placeholder="Código de sala (vacío = crear sala)" autocomplete="off" autocapitalize="characters">
@@ -398,6 +400,16 @@ function ringSpot(){
 
 /* ---------- Estado del jugador, cartera, misiones y skins ---------- */
 const player={x:0,y:0,z:0,vz:0,dir:0,aim:0,walk:0,skin:0};
+/* ---------- Género del personaje ('m' hombre · 'f' mujer) ---------- */
+let gender=store.get('mundoVivoGender')==='f'?'f':'m';
+function setGender(g,save){
+ gender=g==='f'?'f':'m';
+ $('genM').classList.toggle('sel',gender==='m');$('genF').classList.toggle('sel',gender==='f');
+ if(save){store.set('mundoVivoGender',gender);if(started)scheduleSave()}
+}
+$('genM').onclick=()=>setGender('m',true);
+$('genF').onclick=()=>setGender('f',true);
+setGender(gender,false);
 let wallet=22;                                   // una sola cartera (antes: coins + lootCoins - 22)
 const MAX_MISSIONS=10000;
 const missionState={index:0,progress:0,distance:0,jumps:0,seconds:0};
@@ -477,7 +489,7 @@ const npcs=Array.from({length:1000},(_,i)=>{
  }
  npcSpawned.push(spot);
  const armed=Math.random()<.22;
- const n={x:spot.x,y:spot.y,alive:true,respawn:0,hp:100,weapon:armed?(Math.random()<.5?'Pistola':'Escopeta'):null,ammo:armed?24:0,
+ const n={fem:Math.random()<.5,x:spot.x,y:spot.y,alive:true,respawn:0,hp:100,weapon:armed?(Math.random()<.5?'Pistola':'Escopeta'):null,ammo:armed?24:0,
   shootWait:Math.random()*2,phase:i*1.7,color:['#e6b08c','#d8dce6','#c2a4df','#e8cf80'][i%4],
   tx:spot.x,ty:spot.y,think:1+(i%4),burst:0,z:0,vz:0,dir:0,acc:Math.random()*.1,dp:0};
  const t=npcFreeTarget(n,190);n.tx=t.x;n.ty=t.y;return n;
@@ -550,7 +562,7 @@ let saveLoaded=false,saveTimer=null,saveOnline=null,lastSaveSig='';
 function currentSaveData(){
  return {version:2,name:($('playerName').value.trim()||'Jugador').slice(0,18),wallet:Math.floor(wallet),
   mission:{index:missionState.index,progress:missionState.progress,distance:missionState.distance,jumps:missionState.jumps,seconds:missionState.seconds},
-  ownedSkins:[...ownedSkins],equippedSkin:player.skin,ts:Date.now()};
+  ownedSkins:[...ownedSkins],equippedSkin:player.skin,gender,ts:Date.now()};
 }
 function applySaveData(data){
  if(!data||typeof data!=='object')return;
@@ -561,6 +573,7 @@ function applySaveData(data){
  ownedSkins.clear();ownedSkins.add(0);
  if(Array.isArray(data.ownedSkins))data.ownedSkins.forEach(i=>{i=Number(i);if(Number.isInteger(i)&&i>=0&&i<skinOptions.length)ownedSkins.add(i)});
  const eq=Number(data.equippedSkin);player.skin=ownedSkins.has(eq)?eq:0;
+ if(!store.get('mundoVivoGender')&&(data.gender==='f'||data.gender==='m'))setGender(data.gender,false);   // recuperar partida en otro dispositivo
  refreshMission();updateHud(true);drawSkinMenu();
 }
 async function loadPlayerSave(){
@@ -701,8 +714,8 @@ function update(dt){
  // --- red ---
  netEmitWait-=dt;netIdle+=dt;
  if(netSocket&&netSocket.connected&&netJoined&&netEmitWait<=0){
-  const s={x:Math.round(player.x),y:Math.round(player.y),z:Math.round(player.z),dir:+player.dir.toFixed(2),walk:+player.walk.toFixed(1),skin:player.skin};
-  const sig=s.x+','+s.y+','+s.z+','+s.skin;
+  const s={x:Math.round(player.x),y:Math.round(player.y),z:Math.round(player.z),dir:+player.dir.toFixed(2),walk:+player.walk.toFixed(1),skin:player.skin,gender};
+  const sig=s.x+','+s.y+','+s.z+','+s.skin+','+gender;
   if(sig!==lastNetSig||netIdle>1.2){lastNetSig=sig;netIdle=0;netSocket.volatile.emit('player-state',s)}
   netEmitWait=.06;
  }
@@ -860,7 +873,7 @@ function drawWeaponSprite(t,x,y,ang,scale){
  ctx.save();ctx.translate(x,y);ctx.rotate(ang);if(Math.cos(ang)<0)ctx.scale(1,-1);   // si apunta a la izquierda se voltea para no quedar al revés
  ctx.drawImage(im,-w*c.gx,-h*c.gy,w,h);ctx.restore();
 }
-function drawPerson(x,y,color,phase,scale,z,dir,skin,gunAngle,gunType){
+function drawPerson(x,y,color,phase,scale,z,dir,skin,gunAngle,gunType,female){
  const p=project(x,y),bob=Math.abs(Math.sin(phase))*3*scale;
  ctx.fillStyle='#00000030';ctx.beginPath();ctx.ellipse(p.x,p.y+8,13*scale*(1-Math.min(z,120)/400),6*scale,0,0,Math.PI*2);ctx.fill();
  ctx.save();ctx.translate(p.x,p.y-z-bob);ctx.rotate(Math.cos(dir)*.07);
@@ -869,7 +882,11 @@ function drawPerson(x,y,color,phase,scale,z,dir,skin,gunAngle,gunType){
  ctx.beginPath();ctx.moveTo(-4*scale,-4*scale);ctx.lineTo(-5*scale+step,-16*scale);ctx.moveTo(4*scale,-4*scale);ctx.lineTo(5*scale-step,-16*scale);ctx.stroke();
  const glow=skin&&skin.glow;
  if(glow){ctx.save();ctx.shadowBlur=20;ctx.shadowColor=glow==='rainbow'?'hsl('+((worldTime*180)%360)+',100%,60%)':skin.color}
- rounded(-9*scale,-37*scale,18*scale,25*scale,6*scale,color);
+ if(female){   // pelo largo por detrás del cuerpo
+  rounded(-10.5*scale,-52*scale,21*scale,25*scale,9*scale,'#5a3a2c');
+  ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(-7*scale,-37*scale);ctx.lineTo(7*scale,-37*scale);ctx.lineTo(12.5*scale,-12*scale);ctx.lineTo(-12.5*scale,-12*scale);ctx.closePath();ctx.lineJoin='round';ctx.fill();   // vestido
+  ctx.fillStyle='#ffffff40';ctx.fillRect(-7*scale,-25*scale,14*scale,2*scale);   // cinturón
+ }else rounded(-9*scale,-37*scale,18*scale,25*scale,6*scale,color);
  if(glow){
   ctx.restore();
   if(glow==='rainbow'){ctx.strokeStyle='hsl('+((worldTime*180)%360)+',100%,65%)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-25*scale,15*scale,0,Math.PI*2);ctx.stroke()}
@@ -877,7 +894,11 @@ function drawPerson(x,y,color,phase,scale,z,dir,skin,gunAngle,gunType){
  }
  ctx.strokeStyle='#e8c1a0';ctx.lineWidth=4*scale;ctx.beginPath();ctx.moveTo(-8*scale,-31*scale);ctx.lineTo(-12*scale+step*.5,-18*scale);ctx.moveTo(8*scale,-31*scale);ctx.lineTo(12*scale-step*.5,-18*scale);ctx.stroke();
  ctx.fillStyle='#eac09c';ctx.beginPath();ctx.arc(0,-44*scale,9*scale,0,Math.PI*2);ctx.fill();
- ctx.fillStyle='#4b342c';ctx.beginPath();ctx.arc(0,-48*scale,9*scale,Math.PI,Math.PI*2);ctx.fill();
+ ctx.fillStyle=female?'#5a3a2c':'#4b342c';ctx.beginPath();ctx.arc(0,-48*scale,9*scale,Math.PI,Math.PI*2);ctx.fill();
+ if(female){   // mechones a los lados de la cara + lazo rosa
+  ctx.fillRect(-9*scale,-48*scale,3*scale,11*scale);ctx.fillRect(6*scale,-48*scale,3*scale,11*scale);
+  ctx.fillStyle='#ff7eb6';ctx.beginPath();ctx.arc(6*scale,-53*scale,3*scale,0,Math.PI*2);ctx.fill();
+ }
  ctx.restore();
  if(gunType&&weaponReady(gunType)){drawWeaponSprite(gunType,p.x,p.y-z-bob-27*scale,gunAngle||0,scale)}
  else if(gunType){   // arma apuntando hacia donde disparas (respaldo mientras carga la imagen)
@@ -923,17 +944,17 @@ function render(){
    case 0:drawBuilding(o);break;
    case 1:drawTree(o);break;
    case 2:{
-    drawPerson(o.x,o.y,o.color,o.phase,.85,o.z,o.dir,null,o.weapon?Math.atan2(player.y-o.y,player.x-o.x):0,o.weapon||null);
+    drawPerson(o.x,o.y,o.color,o.phase,.85,o.z,o.dir,null,o.weapon?Math.atan2(player.y-o.y,player.x-o.x):0,o.weapon||null,!!o.fem);
     if(o.hp<100){const q=project(o.x,o.y);ctx.fillStyle='#071522cc';ctx.fillRect(q.x-13,q.y-67-o.z,26,4);ctx.fillStyle='#65df83';ctx.fillRect(q.x-13,q.y-67-o.z,26*Math.max(0,o.hp/100),4)}
     break}
    case 3:drawPickup(o);break;
    case 4:{
     const sk=skinOptions[o.skin]||skinOptions[0];
-    drawPerson(o.rx,o.ry,sk.color,o.walk||0,.98,o.rz,o.dir||0,sk);
+    drawPerson(o.rx,o.ry,sk.color,o.walk||0,.98,o.rz,o.dir||0,sk,0,null,o.gender==='f');
     const q=project(o.rx,o.ry);drawLabel(o.name||'Jugador',q.x,q.y-63-o.rz,'#9fe3ff');break}
    case 5:{
     const sk=skinOptions[player.skin];
-    drawPerson(player.x,player.y,sk.color,player.walk,1.08,player.z,player.dir,sk,player.aim,playerWeapon);
+    drawPerson(player.x,player.y,sk.color,player.walk,1.08,player.z,player.dir,sk,player.aim,playerWeapon,gender==='f');
     const q=project(player.x,player.y);drawLabel('TÚ',q.x,q.y-63*1.08-player.z,'#b9f6ca');break}
   }
  }

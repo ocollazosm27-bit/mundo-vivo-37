@@ -58,3 +58,7 @@ Para quitarla, borra la línea  else if(k==='k')activatePower('coins');  en inde
 ARMAS CON IMAGEN (3.8+)
 - La pistola y la escopeta usan imágenes recortadas, incrustadas dentro de index.html (base64),
   así que no hace falta subir archivos extra. Se ven en el suelo, en la mano del jugador y de los NPC.
+
+ELEGIR GÉNERO (hombre / mujer)
+- En la pantalla de inicio eliges "Hombre" o "Mujer". Se recuerda en el dispositivo y se guarda en la partida.
+- Los demás jugadores ven tu personaje según lo que elegiste; los NPC son mitad hombres, mitad mujeres.

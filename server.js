@@ -83,6 +83,7 @@ function cleanSave(input) {
     },
     ownedSkins: owned,
     equippedSkin: owned.includes(equipped) ? equipped : 0,
+    gender: input.gender === "f" ? "f" : "m",
     updatedAt: new Date().toISOString()
   };
 }
@@ -174,7 +175,7 @@ io.on("connection", (socket) => {
     if (players.size >= MAX_ROOM_PLAYERS)
       return socket.emit("network-error", "La sala está llena (máximo " + MAX_ROOM_PLAYERS + ").");
     const existing = [...players.entries()].map(([id, p]) => ({ id, ...p }));
-    const me = { name, x: 0, y: 0, z: 0, dir: 0, walk: 0, skin: 0 };
+    const me = { name, x: 0, y: 0, z: 0, dir: 0, walk: 0, skin: 0, gender: "m" };
     socket.join(room);
     socket.data.room = room;
     socket.data.name = name;
@@ -199,7 +200,8 @@ io.on("connection", (socket) => {
       z: fin(state.z, 0, 2000, old.z),
       dir: fin(state.dir, -10, 10, old.dir),
       walk: fin(state.walk, 0, 1e9, old.walk),
-      skin
+      skin,
+      gender: state.gender === "f" ? "f" : "m"
     };
     players.set(socket.id, safe);
     socket.to(room).volatile.emit("player-state", { id: socket.id, ...safe });
