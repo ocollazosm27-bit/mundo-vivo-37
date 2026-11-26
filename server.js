@@ -27,6 +27,33 @@ app.get(["/", "/index.html"], (_req, res) => {
   res.sendFile(INDEX_FILE);
 });
 
+/* Iconos y manifest (PWA / favicon) */
+const PUBLIC_ASSETS = {
+  "/favicon.ico": "favicon.ico",
+  "/favicon-16.png": "favicon-16.png",
+  "/favicon-32.png": "favicon-32.png",
+  "/apple-touch-icon.png": "apple-touch-icon.png",
+  "/icon-192.png": "icon-192.png",
+  "/icon-512.png": "icon-512.png",
+  "/icon.png": "icon.png",
+  "/manifest.json": "manifest.json"
+};
+const MIME = {
+  ".ico": "image/x-icon",
+  ".png": "image/png",
+  ".json": "application/manifest+json"
+};
+Object.entries(PUBLIC_ASSETS).forEach(([route, filename]) => {
+  app.get(route, (_req, res) => {
+    const file = path.join(__dirname, filename);
+    if (!fs.existsSync(file)) return res.status(404).end();
+    const ext = path.extname(filename);
+    res.set("Content-Type", MIME[ext] || "application/octet-stream");
+    res.set("Cache-Control", "public, max-age=86400");
+    res.sendFile(file);
+  });
+});
+
 /* ---------- Guardado ---------- */
 const SKIN_COUNT = 12;
 const MAX_PROFILES = 200000;

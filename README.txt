@@ -1,9 +1,10 @@
 MUNDO VIVO 3.8 — MULTIJUGADOR + GUARDADO DE PARTIDA (PC y móvil)
 
-Archivos: index.html (juego), server.js (salas, chat, guardado), package.json, .gitignore
+Archivos: index.html (juego), server.js (salas, chat, guardado), package.json, .gitignore,
+          iconos (favicon.ico, icon-192/512.png, apple-touch-icon.png) y manifest.json (PWA)
 
 PUBLICAR EN RENDER
-1. Sube index.html, server.js, package.json y .gitignore a un repositorio de GitHub.
+1. Sube todos los archivos (index.html, server.js, package.json, .gitignore, iconos y manifest.json) a un repositorio de GitHub.
 2. En Render crea un Web Service conectado a ese repositorio.
 3. Build Command: npm install      Start Command: npm start
 4. Environment: DATA_DIR = /var/data
@@ -61,4 +62,4 @@ ARMAS CON IMAGEN (3.8+)
 
 ELEGIR GÉNERO (hombre / mujer)
 - En la pantalla de inicio eliges "Hombre" o "Mujer". Se recuerda en el dispositivo y se guarda en la partida.
-- Los demás jugadores ven tu personaje según lo que elegiste; los NPC mas hombres,que mujeres.
+- Los demás jugadores ven tu personaje según lo que elegiste; los NPC son mitad hombres, mitad mujeres.
