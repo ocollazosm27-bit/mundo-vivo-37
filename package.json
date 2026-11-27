@@ -1,8 +1,8 @@
 {
-  "name": "mundo-vivo-38-multiplayer",
+  "name": "mundo-vivo-39-multiplayer",
   "version": "1.2.0",
   "private": true,
-  "description": "Mundo Vivo 3.8 multijugador con guardado persistente (PC y móvil)",
+  "description": "Mundo Vivo 3.9 multijugador con guardado persistente (PC y móvil)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

@@ -167,7 +167,7 @@ app.post("/api/save/:id", rateLimit, (req, res) => {
   scheduleWrite();
   res.json({ ok: true, updatedAt: saves[id].updatedAt });
 });
-app.get("/health", (_req, res) => res.json({ ok: true, game: "Mundo Vivo 3.8" }));
+app.get("/health", (_req, res) => res.json({ ok: true, game: "Mundo Vivo 3.9" }));
 
 /* ---------- Multijugador ---------- */
 const MAX_ROOM_PLAYERS = 16;
@@ -259,4 +259,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, "0.0.0.0", () => console.log(`Mundo Vivo 3.8 listo en el puerto ${PORT}`));
+server.listen(PORT, "0.0.0.0", () => console.log(`Mundo Vivo 3.9 listo en el puerto ${PORT}`));
