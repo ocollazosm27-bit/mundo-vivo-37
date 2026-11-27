@@ -1,10 +1,12 @@
-MUNDO VIVO 3.8.1 — MULTIJUGADOR + GUARDADO DE PARTIDA (PC y móvil)
+MUNDO VIVO 3.9 — MULTIJUGADOR + GUARDADO DE PARTIDA (PC y móvil)
 
-CORRECCIÓN 3.8.1
-- Arreglado el bug de la pistola/escopeta que a veces se quedaba “tiesa” (sin moverse)
-  mientras caminas. Ahora el arma tiene balanceo propio de caminata (sway) y se dibuja
-  unida a la mano del personaje, así SIEMPRE se mueve cuando te mueves. También se
-  corrigió el aim del ratón (coordenadas relativas al canvas + se suelta al salir).
+NOVEDADES 3.9
+- Nuevas armas: Rifle (rápido), Cohete (explosión en área), Cuchillo (melee).
+- Sistema de niveles y XP (subes de nivel eliminando NPCs).
+- Evento “Hora Dorada”: monedas x2 durante un tiempo.
+- Barras de vida de NPCs cercanos + camera shake.
+- El arma se balancea al caminar (ya no se queda tiesa).
+- Aim del ratón corregido.
 
 Archivos: index.html (juego), server.js (salas, chat, guardado), package.json, .gitignore,
           iconos (favicon.ico, icon-192/512.png, apple-touch-icon.png) y manifest.json (PWA)
