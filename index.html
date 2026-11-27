@@ -907,14 +907,22 @@ const WEAPON_SIZE={Pistola:{w:27,gx:.30,gy:.62},Escopeta:{w:44,gx:.30,gy:.50},Go
 function weaponReady(t){const im=WEAPON_IMG[t];return !!(im&&im.complete&&im.naturalWidth)}
 function drawWeaponSprite(t,x,y,ang,scale){
  const im=WEAPON_IMG[t],c=WEAPON_SIZE[t],w=c.w*scale,h=w*im.naturalHeight/im.naturalWidth;
- ctx.save();ctx.translate(x,y);ctx.rotate(ang);if(Math.cos(ang)<0)ctx.scale(1,-1);   // si apunta a la izquierda se voltea para no quedar al revés
- ctx.drawImage(im,-w*c.gx,-h*c.gy,w,h);ctx.restore();
+ ctx.save();
+ ctx.translate(x,y);
+ ctx.rotate(ang);
+ // Volteo estable: solo cuando apunta claramente a la izquierda (evita parpadeo cerca de vertical)
+ if(Math.cos(ang)<-0.05)ctx.scale(1,-1);
+ ctx.drawImage(im,-w*c.gx,-h*c.gy,w,h);
+ ctx.restore();
 }
 function drawPerson(x,y,color,phase,scale,z,dir,skin,gunAngle,gunType,female){
  const p=project(x,y),bob=Math.abs(Math.sin(phase))*3*scale;
  ctx.fillStyle='#00000030';ctx.beginPath();ctx.ellipse(p.x,p.y+8,13*scale*(1-Math.min(z,120)/400),6*scale,0,0,Math.PI*2);ctx.fill();
  ctx.save();ctx.translate(p.x,p.y-z-bob);ctx.rotate(Math.cos(dir)*.07);
  const step=Math.sin(phase)*5*scale;
+ // balanceo extra del arma al caminar (siempre se mueve cuando caminas)
+ const gunSwayX=Math.sin(phase)*3.2*scale;
+ const gunSwayY=Math.abs(Math.cos(phase))*1.8*scale;
  ctx.strokeStyle='#263746';ctx.lineWidth=5*scale;ctx.lineCap='round';
  ctx.beginPath();ctx.moveTo(-4*scale,-4*scale);ctx.lineTo(-5*scale+step,-16*scale);ctx.moveTo(4*scale,-4*scale);ctx.lineTo(5*scale-step,-16*scale);ctx.stroke();
  const glow=skin&&skin.glow;
@@ -936,12 +944,23 @@ function drawPerson(x,y,color,phase,scale,z,dir,skin,gunAngle,gunType,female){
   ctx.fillRect(-9*scale,-48*scale,3*scale,11*scale);ctx.fillRect(6*scale,-48*scale,3*scale,11*scale);
   ctx.fillStyle='#ff7eb6';ctx.beginPath();ctx.arc(6*scale,-53*scale,3*scale,0,Math.PI*2);ctx.fill();
  }
- ctx.restore();
- if(gunType&&weaponReady(gunType)){drawWeaponSprite(gunType,p.x,p.y-z-bob-27*scale,gunAngle||0,scale)}
- else if(gunType){   // arma apuntando hacia donde disparas (respaldo mientras carga la imagen)
-  const gx=p.x,gy=p.y-z-bob-27*scale,len=gunType==='Escopeta'?24:gunType==='GoldenKing'?22:16;
-  ctx.strokeStyle='#1c242b';ctx.lineWidth=gunType==='Escopeta'?5:4;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+Math.cos(gunAngle)*len,gy+Math.sin(gunAngle)*len);ctx.stroke();
+ // Arma dibujada DENTRO del transform del cuerpo + balanceo de caminata
+ // así SIEMPRE se mueve cuando el personaje camina (nunca se queda tiesa)
+ if(gunType){
+  const ga=gunAngle||0;
+  // posición de la mano derecha + offset hacia donde apunta + sway de caminata
+  const handX=8*scale + Math.cos(ga)*6*scale + gunSwayX;
+  const handY=-22*scale + Math.sin(ga)*4*scale - gunSwayY;
+  if(weaponReady(gunType)){
+   drawWeaponSprite(gunType,handX,handY,ga,scale);
+  }else{
+   // respaldo mientras carga la imagen
+   const len=gunType==='Escopeta'?24:gunType==='GoldenKing'?22:16;
+   ctx.strokeStyle='#1c242b';ctx.lineWidth=gunType==='Escopeta'?5:4;ctx.lineCap='round';
+   ctx.beginPath();ctx.moveTo(handX,handY);ctx.lineTo(handX+Math.cos(ga)*len,handY+Math.sin(ga)*len);ctx.stroke();
+  }
  }
+ ctx.restore();
 }
 function drawPickup(q){
  const p=project(q.x,q.y),bob=Math.sin(worldTime*4+q.phase)*3;
