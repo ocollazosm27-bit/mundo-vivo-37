@@ -1,4 +1,11 @@
-MUNDO VIVO 3.8 — MULTIJUGADOR + GUARDADO DE PARTIDA (PC y móvil)
+MUNDO VIVO 3.8.1 — MULTIJUGADOR + GUARDADO DE PARTIDA (PC y móvil)
+
+CORRECCIÓN 3.8.1
+- Arreglado el bug de la pistola/escopeta que a veces se quedaba “tiesa” (apuntando
+  fijo a un solo lugar) al moverse. La causa era que las coordenadas del ratón se
+  tomaban respecto a la ventana en vez del canvas, y además el aim no se soltaba
+  cuando el cursor salía del juego. Ahora el arma sigue correctamente al ratón
+  (o al NPC más cercano en móvil) y deja de “congelarse” al caminar/correr.
 
 Archivos: index.html (juego), server.js (salas, chat, guardado), package.json, .gitignore,
           iconos (favicon.ico, icon-192/512.png, apple-touch-icon.png) y manifest.json (PWA)

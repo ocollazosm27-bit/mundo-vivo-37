@@ -284,12 +284,30 @@ addEventListener('keydown',e=>{
  else if(k==='escape'){toggleChat(false);$('skinPanel').style.display='none'}
 });
 addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
-addEventListener('blur',()=>{keys.clear();mouseDown=false});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();mouseDown=false}});
+addEventListener('blur',()=>{keys.clear();mouseDown=false;mouseActive=false});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();mouseDown=false;mouseActive=false}});
 function key(...a){return a.some(k=>keys.has(k))}
 
-canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button===0){mouseDown=true;mouseActive=true;mouseX=e.clientX;mouseY=e.clientY}});
-canvas.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'){mouseActive=true;mouseX=e.clientX;mouseY=e.clientY}});
+function setMouseFromEvent(e){
+  const r=canvas.getBoundingClientRect();
+  // coordenadas relativas al canvas (lógico W×H), no a la ventana
+  mouseX=(e.clientX-r.left)*(W/Math.max(1,r.width));
+  mouseY=(e.clientY-r.top)*(H/Math.max(1,r.height));
+}
+canvas.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='mouse'&&e.button===0){
+    mouseDown=true;mouseActive=true;setMouseFromEvent(e);
+  }
+});
+canvas.addEventListener('pointermove',e=>{
+  if(e.pointerType==='mouse'){mouseActive=true;setMouseFromEvent(e);}
+});
+canvas.addEventListener('pointerleave',e=>{
+  if(e.pointerType==='mouse'){mouseActive=false;}
+});
+canvas.addEventListener('pointercancel',e=>{
+  if(e.pointerType==='mouse'){mouseActive=false;mouseDown=false;}
+});
 addEventListener('pointerup',e=>{if(e.pointerType==='mouse')mouseDown=false});
 
 const joy={x:0,y:0,active:false,id:null},joyEl=$('joy'),knob=$('knob');
