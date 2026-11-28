@@ -704,7 +704,12 @@ async function loadPlayerSave(){
  }catch(_){}
  try{const l=JSON.parse(store.get('mundoVivoLocalSave')||'null');if(l&&l.pid===profileId)local=l}catch(_){}
  const sT=server?Date.parse(server.updatedAt)||0:0,lT=local&&local.ts||0;
- const chosen=server&&(!local||sT>=lT)?server:local;   // gana la copia más reciente
+ let chosen=server&&(!local||sT>=lT)?server:local;   // gana la copia más reciente
+ // Compatibilidad con partidas guardadas antes de que el servidor conservara nivel/XP.
+ const other=chosen===server?local:server;
+ if(chosen && other && chosen.level===undefined && other.level!==undefined){
+  chosen={...chosen,level:other.level,xp:other.xp};
+ }
  if(chosen){applySaveData(chosen);setStatus(serverOk?'💾 Partida recuperada':'💾 Partida local cargada (sin servidor)',4)}
  else setStatus('✨ Nueva partida',4);
  saveOnline=serverOk;saveLoaded=true;savePlayerNow(true);

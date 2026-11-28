@@ -111,6 +111,9 @@ function cleanSave(input) {
     ownedSkins: owned,
     equippedSkin: owned.includes(equipped) ? equipped : 0,
     gender: input.gender === "f" ? "f" : "m",
+    // Conservar nivel y experiencia: antes el servidor los descartaba al guardar.
+    level: Math.max(1, Math.floor(num(input.level, 1000000) || 1)),
+    xp: num(input.xp, 1e12),
     updatedAt: new Date().toISOString()
   };
 }
